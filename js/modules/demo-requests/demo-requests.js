@@ -78,6 +78,34 @@ function requestDataFrom(request) {
     };
 }
 
+async function ensureApprovedRequestLinks(requests) {
+    await Promise.all(requests.map(async (request) => {
+        if (request.status !== "approved") {
+            return;
+        }
+
+        const existingToken = request.demo_access_links?.[0]?.token_plain || getCachedToken(request.id) || "";
+        if (existingToken) {
+            return;
+        }
+
+        try {
+            const link = await generateDemoLink({
+                id: request.id,
+                preferred_role: request.preferred_role
+            });
+            const token = new URL(link).searchParams.get("token") || "";
+            if (!token) {
+                return;
+            }
+            setCachedToken(request.id, token);
+            request.demo_access_links = [{ token_plain: token }];
+        } catch {
+            request.demo_access_links = [];
+        }
+    }));
+}
+
 function renderRequestRow(request) {
     const status = formatRequestStatus(request.status);
     const demoLinkCell = renderDemoLinkStore(request.token_plain);
@@ -323,6 +351,7 @@ function filterDemoRequests(container, query) {
 
 export async function renderDemoRequests() {
     const requests = await getDemoRequests();
+    await ensureApprovedRequestLinks(requests);
     const approvedRequests = requests.filter((request) => request.status === "approved");
     const pendingRequests = requests.filter((request) => request.status === "pending");
 

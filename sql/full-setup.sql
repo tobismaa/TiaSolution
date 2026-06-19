@@ -601,6 +601,12 @@ create policy "platform admins can view demo access links"
 on public.demo_access_links for select
 using (public.is_platform_admin());
 
+drop policy if exists "platform admins can update demo access links" on public.demo_access_links;
+create policy "platform admins can update demo access links"
+on public.demo_access_links for update
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
+
 drop policy if exists "public can verify valid demo links" on public.demo_access_links;
 create policy "public can verify valid demo links"
 on public.demo_access_links for select
