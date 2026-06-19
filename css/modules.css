@@ -1,0 +1,1083 @@
+.section-stack {
+    display: grid;
+    gap: 18px;
+}
+
+.branch-capacity-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+}
+
+.branch-capacity-card {
+    min-height: 104px;
+    display: grid;
+    align-content: center;
+    gap: 6px;
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.branch-capacity-card h3 {
+    margin: 0;
+    font-size: 1.35rem;
+}
+
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+}
+
+.mini-insight {
+    color: var(--muted);
+    line-height: 1.6;
+    margin: 10px 0 0;
+}
+
+.trust-row,
+.preview-kpis {
+    display: grid;
+    gap: 12px;
+}
+
+.trust-row {
+    margin-top: 20px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.trust-chip,
+.preview-kpis article,
+.step-card,
+.feature-card {
+    background: #fff8f2;
+    border: 1px solid #ebdfd2;
+    border-radius: 20px;
+    padding: 16px;
+}
+
+.trust-chip:hover,
+.preview-kpis article:hover,
+.step-card:hover,
+.feature-card:hover {
+    transform: translateY(-7px);
+    box-shadow: 0 22px 36px rgba(20, 31, 40, 0.1);
+    border-color: rgba(176, 66, 119, 0.22);
+}
+
+.trust-chip {
+    display: grid;
+    gap: 4px;
+}
+
+.trust-chip span,
+.preview-kpis span,
+.step-number {
+    color: var(--muted);
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+}
+
+.preview-kpis {
+    margin-top: 18px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.preview-kpis article {
+    position: relative;
+    overflow: hidden;
+}
+
+.preview-kpis article::after {
+    content: "";
+    position: absolute;
+    inset: auto -40% 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 240ms ease;
+}
+
+.preview-kpis article:hover::after {
+    opacity: 1;
+}
+
+.preview-kpis article:first-child {
+    animation: riseIn 700ms ease 180ms both;
+}
+
+.preview-kpis article:nth-child(2) {
+    animation: riseIn 700ms ease 260ms both;
+}
+
+.preview-kpis article:nth-child(3) {
+    animation: riseIn 700ms ease 340ms both;
+}
+
+.preview-kpis article strong,
+.step-number {
+    display: block;
+    margin-top: 8px;
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.preview-trend {
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid #eadccc;
+    background: rgba(255, 253, 248, 0.78);
+}
+
+.trend-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.trend-head p,
+.trend-head strong {
+    margin: 0;
+}
+
+.trend-head p {
+    color: var(--muted);
+}
+
+.trend-head strong {
+    color: var(--accent-deep);
+}
+
+.trend-bars {
+    margin-top: 14px;
+    height: 90px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+    align-items: end;
+}
+
+.trend-bars span {
+    height: var(--h);
+    border-radius: 999px;
+    background: linear-gradient(180deg, #d88966, var(--accent-deep));
+    animation: riseIn 700ms ease both;
+    transition:
+        filter 220ms ease,
+        transform 220ms ease;
+}
+
+.trend-bars span:nth-child(1) {
+    animation-delay: 60ms;
+}
+
+.trend-bars span:nth-child(2) {
+    animation-delay: 120ms;
+}
+
+.trend-bars span:nth-child(3) {
+    animation-delay: 180ms;
+}
+
+.trend-bars span:nth-child(4) {
+    animation-delay: 240ms;
+}
+
+.trend-bars span:nth-child(5) {
+    animation-delay: 300ms;
+}
+
+.trend-bars span:nth-child(6) {
+    animation-delay: 360ms;
+}
+
+.trend-bars:hover span {
+    filter: saturate(1.15);
+    transform: translateY(-2px);
+}
+
+.scroll-step {
+    opacity: 0;
+    transform: translateY(42px) scale(0.96);
+}
+
+.scroll-step.in-view {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition:
+        opacity 650ms ease,
+        transform 650ms ease,
+        box-shadow 220ms ease,
+        border-color 220ms ease;
+}
+
+.scroll-step:nth-child(1).in-view {
+    transition-delay: 60ms;
+}
+
+.scroll-step:nth-child(2).in-view {
+    transition-delay: 170ms;
+}
+
+.scroll-step:nth-child(3).in-view {
+    transition-delay: 280ms;
+}
+
+.feature-card:nth-child(1) {
+    animation: riseIn 700ms ease 120ms both;
+}
+
+.feature-card:nth-child(2) {
+    animation: riseIn 700ms ease 220ms both;
+}
+
+.feature-card:nth-child(3) {
+    animation: riseIn 700ms ease 320ms both;
+}
+
+.feature-card:nth-child(4) {
+    animation: riseIn 700ms ease 420ms both;
+}
+
+.feature-card h3,
+.step-card h3 {
+    font-size: 1.2rem;
+}
+
+.feature-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.feature-card::before {
+    content: "";
+    position: absolute;
+    inset: -65% 38% auto auto;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(240, 79, 147, 0.14), transparent 68%);
+    transition: transform 300ms ease;
+}
+
+.feature-card:hover::before {
+    transform: scale(1.1);
+}
+
+.step-card {
+    position: relative;
+}
+
+.step-card::after {
+    content: "";
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 12px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(184, 92, 56, 0.16), rgba(184, 92, 56, 0.45), rgba(184, 92, 56, 0.16));
+    opacity: 0;
+    transition: opacity 220ms ease;
+}
+
+.step-card:hover::after {
+    opacity: 1;
+}
+
+.audit-list {
+    display: grid;
+    gap: 12px;
+}
+
+.audit-item {
+    display: grid;
+    grid-template-columns: 140px 1fr auto;
+    gap: 12px;
+    border-bottom: 1px solid #eee5d9;
+    padding-bottom: 12px;
+}
+
+.report-launch-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.report-branch-filter {
+    margin: 0;
+    min-width: 220px;
+}
+
+.report-launch-card {
+    border: 1px solid #ebdfd2;
+    background: #fff8f2;
+    border-radius: 14px;
+    padding: 10px 12px;
+    min-width: 210px;
+    max-width: 260px;
+    display: grid;
+    gap: 4px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.report-launch-card:hover {
+    border-color: rgba(176, 66, 119, 0.22);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 22px rgba(20, 31, 40, 0.09);
+}
+
+.report-launch-card__eyebrow {
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.report-launch-card strong {
+    font-size: 0.92rem;
+}
+
+.gl-posting-tabbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.gl-posting-module .form-field span,
+.gl-posting-module .eyebrow,
+.gl-posting-module .muted {
+    font-size: 0.74rem;
+}
+
+.gl-posting-module .form-field input,
+.gl-posting-module .form-field select,
+.gl-posting-module .form-field textarea {
+    font-size: 0.8rem;
+}
+
+.gl-posting-module table th,
+.gl-posting-module table td {
+    font-size: 0.78rem;
+}
+
+.gl-posting-module .gl-recent-activity-table th,
+.gl-posting-module .gl-recent-activity-table td {
+    font-size: 0.76rem !important;
+    line-height: 1.25;
+}
+
+.gl-reverse-confirm {
+    margin-left: auto;
+}
+
+.gl-posting-module .btn:disabled,
+.gl-posting-module button[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: saturate(0.8);
+}
+
+.gl-success-modal__dialog {
+    width: min(420px, 92vw);
+}
+
+.gl-success-modal__body {
+    display: grid;
+    gap: 8px;
+    font-size: 0.84rem;
+}
+
+.ops-success-modal__dialog {
+    width: min(360px, 90vw);
+    max-height: min(60vh, 420px);
+    padding: 18px;
+}
+
+.ops-success-panel {
+    display: grid;
+    gap: 10px;
+}
+
+.gl-search-field {
+    position: relative;
+}
+
+.gl-suggestion-box {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 6;
+    border: 1px solid #ebdfd2;
+    background: #fffdf9;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(20, 31, 40, 0.12);
+    max-height: 210px;
+    overflow: auto;
+    padding: 6px;
+    display: grid;
+    gap: 4px;
+}
+
+.gl-suggestion-item {
+    border: 0;
+    background: transparent;
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: left;
+    display: grid;
+    gap: 2px;
+    cursor: pointer;
+}
+
+.gl-suggestion-item:hover {
+    background: rgba(244, 229, 214, 0.7);
+}
+
+.gl-suggestion-item strong {
+    font-size: 0.82rem;
+}
+
+.gl-suggestion-item span {
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+.gl-statement-modal__dialog {
+    width: min(1220px, 96vw);
+    max-height: min(92vh, 1100px);
+    overflow: auto;
+}
+
+.gl-statement-modal__content {
+    display: grid;
+    gap: 12px;
+    padding-bottom: 6px;
+}
+
+.trial-balance-result-modal__dialog {
+    width: min(1160px, 96vw);
+    max-height: min(88vh, 900px);
+    overflow: auto;
+}
+
+.gl-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.gl-summary-card {
+    display: grid;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #e8dece;
+    background: #fffaf3;
+}
+
+.gl-summary-card span {
+    color: var(--muted);
+    font-size: 0.72rem;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+}
+
+.gl-summary-card strong {
+    font-size: 0.82rem;
+    line-height: 1.2;
+    font-weight: 800;
+    word-break: break-word;
+}
+
+.gl-overview-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gl-overview-actions .btn {
+    flex: 0 0 auto;
+}
+
+.gl-overview-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    align-items: stretch;
+}
+
+.gl-overview-card {
+    min-height: 96px;
+    padding: 14px 16px;
+    align-content: center;
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease,
+        border-color 180ms ease,
+        background-color 180ms ease;
+}
+
+.gl-overview-card span {
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+}
+
+.gl-overview-card strong {
+    font-size: 1.1rem;
+    margin-top: 6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .gl-overview-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 28px rgba(20, 31, 40, 0.08);
+        border-color: rgba(176, 66, 119, 0.2);
+        background-color: #fffdf9;
+    }
+}
+
+.amount-debit {
+    color: #c22f2f;
+    font-weight: 800;
+}
+
+.amount-credit {
+    color: #1f8f43;
+    font-weight: 800;
+}
+
+.amount-balance {
+    color: #2f63d6;
+    font-weight: 800;
+}
+
+.gl-transaction-table th,
+.gl-transaction-table td {
+    font-size: 0.84rem;
+    padding: 7px 0;
+    line-height: 1.2;
+}
+
+.gl-ref-btn {
+    font-size: 0.82rem;
+    line-height: 1.15;
+}
+
+.gl-filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.gl-filter-row .form-field {
+    gap: 4px;
+}
+
+.gl-filter-row .form-field span {
+    font-size: 0.72rem;
+}
+
+.gl-filter-row .form-field input {
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 0.76rem;
+}
+
+.gl-filter-row .form-check {
+    font-size: 0.74rem;
+}
+
+.gl-pager-row {
+    justify-content: flex-end;
+}
+
+.gl-period-presets .btn {
+    padding: 7px 10px;
+    font-size: 0.78rem;
+}
+
+.gl-transaction-table thead th {
+    position: sticky;
+    top: 0;
+    background: #fffdf8;
+    z-index: 2;
+}
+
+.gl-transaction-table tbody td {
+    white-space: normal;
+    word-break: break-word;
+}
+
+.trial-balance-group-row td {
+    background: rgba(244, 232, 218, 0.55);
+    font-weight: 800;
+    border-top: 1px solid rgba(160, 140, 110, 0.24);
+}
+
+.trial-balance-category-row td {
+    background: rgba(255, 250, 242, 0.75);
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.76rem;
+}
+
+.trial-balance-subtotal-row td {
+    background: rgba(247, 240, 230, 0.72);
+    border-top: 1px dashed rgba(160, 140, 110, 0.35);
+}
+
+.trial-balance-modal-view {
+    display: grid;
+    gap: 12px;
+}
+
+.trial-balance-modal-view__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(160, 140, 110, 0.18);
+}
+
+.trial-balance-modal-view__head h3,
+.trial-balance-modal-view__head p {
+    margin: 0;
+}
+
+.trial-balance-modal-view__head p {
+    color: var(--muted);
+    margin-top: 4px;
+    font-size: 0.82rem;
+}
+
+.trial-balance-modal-view__meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.trial-balance-modal-view__meta span {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(160, 140, 110, 0.18);
+    background: #fffaf5;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #44515d;
+}
+
+.trial-balance-table--detailed th,
+.trial-balance-table--detailed td {
+    vertical-align: top;
+}
+
+.trial-balance-amount-pair {
+    display: grid;
+    gap: 4px;
+    min-width: 110px;
+}
+
+.trial-balance-amount-pair .amount-debit::before {
+    content: "DR ";
+    color: #7f8a93;
+    font-weight: 700;
+}
+
+.trial-balance-amount-pair .amount-credit::before {
+    content: "CR ";
+    color: #7f8a93;
+    font-weight: 700;
+}
+
+.quad-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.payroll-summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.payroll-summary-card {
+    display: grid;
+    gap: 6px;
+}
+
+.payroll-summary-card h3,
+.payroll-summary-card p,
+.payroll-summary-card span {
+    margin: 0;
+}
+
+.payroll-summary-card h3 {
+    font-size: 1.15rem;
+}
+
+.payroll-summary-card span {
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+.payroll-stack {
+    display: grid;
+    gap: 12px;
+}
+
+.payroll-component-row,
+.payroll-level-row {
+    padding: 14px;
+    border: 1px solid rgba(160, 140, 110, 0.16);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.62);
+}
+
+.payroll-component-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 150px auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.payroll-components-modal__dialog {
+    width: min(760px, 100%);
+    max-height: min(82vh, 820px);
+}
+
+.payroll-components-modal__dialog .form-grid {
+    gap: 14px;
+}
+
+.payroll-components-modal__dialog .payroll-level-row {
+    padding: 12px;
+    border-radius: 16px;
+}
+
+.payroll-components-modal__dialog .payroll-component-grid .form-field input,
+.payroll-components-modal__dialog .payroll-component-grid .form-field select {
+    font-size: 0.88rem;
+}
+
+.payroll-components-modal__dialog .payroll-row-actions .btn {
+    min-width: 88px;
+}
+
+.payroll-inline-options {
+    margin-top: 12px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.payroll-row-actions {
+    display: flex;
+    align-items: end;
+    justify-content: flex-end;
+}
+
+.payroll-setup-check {
+    min-height: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: white;
+}
+
+.payroll-collapsible {
+    padding-top: 16px;
+}
+
+.payroll-collapsible__summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.payroll-collapsible__summary::-webkit-details-marker {
+    display: none;
+}
+
+.payroll-collapsible__summary h3,
+.payroll-collapsible__summary p {
+    margin: 0;
+}
+
+.payroll-collapsible__summary p {
+    margin-top: 4px;
+}
+
+.payroll-subtabs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.payroll-subtabs .btn {
+    min-width: 170px;
+}
+
+.payroll-setup-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.payroll-note-card,
+.payroll-structure-card {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid rgba(160, 140, 110, 0.16);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.62);
+}
+
+.payroll-note-card strong,
+.payroll-note-card span {
+    margin: 0;
+}
+
+.payroll-note-card span {
+    color: var(--muted);
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+.payroll-structure-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.payroll-level-table {
+    border: 1px solid rgba(160, 140, 110, 0.16);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.68);
+    overflow: hidden;
+}
+
+.payroll-level-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.payroll-level-table th,
+.payroll-level-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(160, 140, 110, 0.12);
+    vertical-align: middle;
+}
+
+.payroll-level-table thead th {
+    background: #fff8f2;
+    color: var(--muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.payroll-level-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.payroll-level-table__level {
+    display: grid;
+    gap: 3px;
+}
+
+.payroll-level-table__level strong {
+    font-size: 0.95rem;
+}
+
+.payroll-level-table__level span {
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+.payroll-level-table__count {
+    display: inline-flex;
+    min-width: 34px;
+    justify-content: center;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #fff3e6;
+    color: #8b5523;
+    font-weight: 800;
+}
+
+.payroll-level-table__empty {
+    padding: 24px;
+    color: var(--muted);
+}
+
+.payroll-level-view__list {
+    display: grid;
+    gap: 10px;
+}
+
+.payroll-level-view__item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid rgba(160, 140, 110, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.64);
+}
+
+.payroll-level-view__item strong,
+.payroll-level-view__item span {
+    margin: 0;
+}
+
+.payroll-level-view-modal__dialog {
+    width: min(820px, 94vw);
+    max-height: min(88vh, 860px);
+    overflow: auto;
+}
+
+.business-modal[data-payroll-staff-list-modal] {
+    justify-items: start;
+    padding-left: 0;
+    padding-right: max(580px, 33vw);
+}
+
+.payroll-staff-list-modal__dialog {
+    width: min(1220px, 79vw);
+    max-height: min(92vh, 1100px);
+    overflow: auto;
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.payroll-staff-list-modal__dialog .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+}
+
+.payroll-staff-list-modal__dialog table {
+    width: 100%;
+    min-width: 0;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.payroll-staff-list-modal__dialog thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fff8f2;
+    color: var(--muted);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.2;
+}
+
+.payroll-staff-list-modal__dialog th,
+.payroll-staff-list-modal__dialog td {
+    padding: 10px 10px;
+    border-bottom: 1px solid rgba(160, 140, 110, 0.12);
+    vertical-align: middle;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.payroll-staff-list-modal__dialog th {
+    min-width: 0;
+}
+
+.payroll-staff-list-modal__dialog tbody tr:nth-child(even) td {
+    background: rgba(255, 251, 245, 0.72);
+}
+
+.payroll-staff-list-modal__dialog tbody tr:hover td {
+    background: rgba(255, 244, 232, 0.88);
+}
+
+.payroll-staff-list-modal__dialog td:nth-last-child(2),
+.payroll-staff-list-modal__dialog td:last-child {
+    white-space: normal;
+}
+
+.payroll-staff-list-modal__dialog .business-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.payroll-staff-list-modal__dialog .business-row-actions .btn {
+    padding: 8px 10px;
+    font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+    .trust-row,
+    .preview-kpis {
+        grid-template-columns: 1fr;
+    }
+
+    .branch-capacity-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .gl-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .gl-overview-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .quad-grid,
+    .payroll-summary-grid,
+    .payroll-structure-grid,
+    .payroll-component-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .payroll-subtabs {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .gl-filter-row {
+        grid-template-columns: 1fr;
+    }
+
+    .preview-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .audit-item {
+        grid-template-columns: 1fr;
+    }
+
+    .trial-balance-modal-view__head {
+        flex-direction: column;
+    }
+
+    .trial-balance-modal-view__meta {
+        justify-content: flex-start;
+    }
+}

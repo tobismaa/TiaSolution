@@ -1,0 +1,2 @@
+-- Intentionally left empty for live deployments.
+-- Create your real businesses, users, and transactions from the app or admin workflows.

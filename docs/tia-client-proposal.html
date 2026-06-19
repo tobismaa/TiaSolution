@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tia Client Proposal</title>
+    <style>
+        :root {
+            --ink: #18313d;
+            --ink-soft: #51636c;
+            --line: #d7e0e4;
+            --paper: #ffffff;
+            --mist: #f4f7f8;
+            --accent: #1e6b6d;
+            --accent-soft: #dff0ee;
+            --gold: #b9892f;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #e9eef0;
+            color: var(--ink);
+            font-family: "Segoe UI", Arial, sans-serif;
+            line-height: 1.55;
+        }
+
+        body {
+            padding: 24px;
+        }
+
+        .document {
+            width: 210mm;
+            margin: 0 auto;
+        }
+
+        .page {
+            min-height: 297mm;
+            background: var(--paper);
+            padding: 20mm 18mm 18mm;
+            margin: 0 auto 18px;
+            box-shadow: 0 14px 40px rgba(24, 49, 61, 0.12);
+            position: relative;
+        }
+
+        .cover {
+            background:
+                radial-gradient(circle at top right, rgba(185, 137, 47, 0.22), transparent 28%),
+                linear-gradient(160deg, #17313e 0%, #1e6b6d 58%, #f5faf9 58%, #ffffff 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .cover::after {
+            content: "";
+            position: absolute;
+            right: -50mm;
+            bottom: -30mm;
+            width: 120mm;
+            height: 120mm;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 22mm;
+        }
+
+        .brand-mark {
+            width: 18mm;
+            height: 18mm;
+            border-radius: 5mm;
+            display: grid;
+            place-items: center;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .brand-copy h1,
+        .brand-copy p {
+            margin: 0;
+        }
+
+        .brand-copy h1 {
+            font-size: 18px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .brand-copy p {
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 12px;
+        }
+
+        .cover-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 18mm;
+            margin-top: 14mm;
+        }
+
+        .eyebrow {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .cover h2 {
+            font-size: 36px;
+            line-height: 1.12;
+            margin: 16px 0 14px;
+            max-width: 120mm;
+        }
+
+        .cover .lead {
+            color: rgba(255, 255, 255, 0.86);
+            font-size: 15px;
+            max-width: 118mm;
+        }
+
+        .cover-card {
+            align-self: end;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 8mm;
+            padding: 10mm;
+            backdrop-filter: blur(8px);
+        }
+
+        .cover-card h3,
+        .cover-card p {
+            margin: 0 0 10px;
+        }
+
+        .cover-card p:last-child {
+            margin-bottom: 0;
+        }
+
+        .meta-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 12mm;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+        }
+
+        .section-tag {
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 11px;
+            font-weight: 700;
+            margin: 0 0 8px;
+        }
+
+        h3 {
+            font-size: 24px;
+            line-height: 1.2;
+            margin: 0 0 12px;
+        }
+
+        h4 {
+            font-size: 16px;
+            margin: 0 0 8px;
+        }
+
+        p {
+            margin: 0 0 12px;
+            color: var(--ink-soft);
+            font-size: 13.5px;
+        }
+
+        .intro-grid,
+        .two-col,
+        .role-grid,
+        .benefit-grid,
+        .deliverable-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .intro-grid {
+            grid-template-columns: 1.1fr 0.9fr;
+        }
+
+        .two-col {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .role-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .benefit-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .deliverable-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 6mm;
+            padding: 12px 14px;
+            background: var(--paper);
+        }
+
+        .soft-card {
+            background: var(--mist);
+            border: 1px solid #e4ebee;
+            border-radius: 6mm;
+            padding: 12px 14px;
+        }
+
+        .accent-card {
+            background: var(--accent-soft);
+            border: 1px solid #c4dfdc;
+            border-radius: 6mm;
+            padding: 12px 14px;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--ink-soft);
+            font-size: 13.5px;
+        }
+
+        li {
+            margin-bottom: 7px;
+        }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .stat {
+            border: 1px solid var(--line);
+            border-radius: 5mm;
+            padding: 12px;
+            background: #fbfcfc;
+        }
+
+        .stat strong {
+            display: block;
+            color: var(--ink);
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .stat span {
+            color: var(--ink-soft);
+            font-size: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+        }
+
+        th, td {
+            border: 1px solid var(--line);
+            padding: 9px 10px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #eef4f5;
+            color: var(--ink);
+            font-weight: 700;
+        }
+
+        .timeline td:first-child,
+        .timeline th:first-child {
+            width: 18%;
+        }
+
+        .footer-note {
+            position: absolute;
+            bottom: 10mm;
+            left: 18mm;
+            right: 18mm;
+            display: flex;
+            justify-content: space-between;
+            color: #73858c;
+            font-size: 11px;
+            border-top: 1px solid var(--line);
+            padding-top: 6px;
+        }
+
+        .page-break {
+            break-before: page;
+            page-break-before: always;
+        }
+
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+
+            .document {
+                width: auto;
+                margin: 0;
+            }
+
+            .page {
+                margin: 0;
+                box-shadow: none;
+                min-height: auto;
+                break-after: page;
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="document">
+        <section class="page cover">
+            <div class="brand">
+                <div class="brand-mark">T</div>
+                <div class="brand-copy">
+                    <h1>Tia</h1>
+                    <p>Finance operating system</p>
+                </div>
+            </div>
+
+            <div class="cover-grid">
+                <div>
+                    <span class="eyebrow">Client Proposal</span>
+                    <h2>Tia ERP Proposal: Role-Based Finance Operations Platform for Modern Businesses</h2>
+                    <p class="lead">
+                        A comprehensive proposal for delivering a secure, multi-tenant, multi-role finance and operations platform that centralizes control, improves visibility, and strengthens audit readiness.
+                    </p>
+                    <div class="meta-list">
+                        <div><strong>Prepared for:</strong> Prospective Client</div>
+                        <div><strong>Prepared by:</strong> Tia Product Team</div>
+                        <div><strong>Date:</strong> June 8, 2026</div>
+                        <div><strong>Document Type:</strong> Product and implementation proposal</div>
+                    </div>
+                </div>
+
+                <aside class="cover-card">
+                    <h3>Proposal Focus</h3>
+                    <p>This proposal presents Tia as a scalable finance operations solution for growing organizations with multiple users, branches, approval layers, and reporting needs.</p>
+                    <p>It reflects the current product foundation already present in the platform and outlines the recommended path to client deployment, adoption, and expansion.</p>
+                </aside>
+            </div>
+        </section>
+
+        <section class="page">
+            <p class="section-tag">Executive Summary</p>
+            <div class="intro-grid">
+                <div>
+                    <h3>Overview</h3>
+                    <p>
+                        Tia is a cloud-based finance operating system designed to help businesses manage core financial workflows from a single controlled workspace. The platform is built to support multiple organizations, multiple branches, and multiple user roles, making it suitable for businesses that need operational discipline as they scale.
+                    </p>
+                    <p>
+                        The solution combines finance administration, operational workflows, reporting, access management, and audit visibility in one product. Rather than relying on scattered spreadsheets, disconnected tools, and manual follow-up, clients can operate through a structured platform with role-based controls and traceable activity.
+                    </p>
+                </div>
+                <div class="soft-card">
+                    <h4>What This Proposal Covers</h4>
+                    <ul>
+                        <li>Business problem and opportunity</li>
+                        <li>Proposed solution and product positioning</li>
+                        <li>Functional scope and user roles</li>
+                        <li>Technical architecture and security approach</li>
+                        <li>Implementation phases and delivery model</li>
+                        <li>Expected business outcomes and next steps</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat">
+                    <strong>6</strong>
+                    <span>Defined role types across platform and business operations</span>
+                </div>
+                <div class="stat">
+                    <strong>Multi-tenant</strong>
+                    <span>Business-level isolation for scalable SaaS delivery</span>
+                </div>
+                <div class="stat">
+                    <strong>Audit-ready</strong>
+                    <span>Traceable workflows, access control, and reporting structure</span>
+                </div>
+            </div>
+
+            <p class="section-tag" style="margin-top: 18px;">Client Need</p>
+            <h3>Why This Solution Matters</h3>
+            <p>
+                Many growing businesses struggle to maintain control over finance processes as teams, branches, and transaction volumes increase. Approvals become inconsistent, reporting is delayed, access is loosely managed, and audit preparation becomes expensive and stressful. Tia addresses this gap by giving finance teams, management, and oversight users a shared platform with defined workflows and controlled visibility.
+            </p>
+
+            <div class="footer-note">
+                <span>Tia Client Proposal</span>
+                <span>Page 2</span>
+            </div>
+        </section>
+
+        <section class="page">
+            <p class="section-tag">Business Context</p>
+            <h3>Problem Statement</h3>
+            <div class="two-col">
+                <div class="card">
+                    <h4>Common Operational Challenges</h4>
+                    <ul>
+                        <li>Finance data is split across spreadsheets, chats, and disconnected tools.</li>
+                        <li>User access is often too broad or inconsistently managed.</li>
+                        <li>Managers and auditors lack a reliable view of business activity.</li>
+                        <li>Branch-level operations are difficult to compare and control.</li>
+                        <li>Manual onboarding and billing workflows create avoidable delays.</li>
+                    </ul>
+                </div>
+                <div class="accent-card">
+                    <h4>Business Impact</h4>
+                    <ul>
+                        <li>Slow approvals and slow decision-making</li>
+                        <li>Reduced confidence in reports and financial visibility</li>
+                        <li>Greater risk of unauthorized changes or poor accountability</li>
+                        <li>Higher effort during audit reviews and month-end close</li>
+                        <li>Difficulty scaling finance operations across multiple teams or locations</li>
+                    </ul>
+                </div>
+            </div>
+
+            <p class="section-tag" style="margin-top: 18px;">Proposed Response</p>
+            <h3>Tia as the Recommended Platform</h3>
+            <p>
+                Tia is proposed as a modern finance operations platform that centralizes finance workflows, controls visibility by role, supports branch-aware business operations, and provides a structured path from prospect onboarding to live subscription-managed usage. The system is not only an internal finance tool but a scalable operating platform that can support multiple client organizations under one managed service environment.
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Need</th>
+                        <th>Tia Response</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Controlled access to finance processes</td>
+                        <td>Role-based workspaces for super admin, business admin, manager, staff, auditor, and account users</td>
+                    </tr>
+                    <tr>
+                        <td>Branch-aware operations</td>
+                        <td>Business and branch scoping with separate operational views and data filtering</td>
+                    </tr>
+                    <tr>
+                        <td>Stronger reporting and oversight</td>
+                        <td>Trial balance, general ledger, reports, audit visibility, and export-ready outputs</td>
+                    </tr>
+                    <tr>
+                        <td>Client onboarding and lifecycle management</td>
+                        <td>Organization onboarding, demo access management, and subscription oversight</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="footer-note">
+                <span>Tia Client Proposal</span>
+                <span>Page 3</span>
+            </div>
+        </section>
+
+        <section class="page">
+            <p class="section-tag">Solution Scope</p>
+            <h3>Functional Scope of the Platform</h3>
+            <p>
+                The current product structure already supports a substantial platform foundation. The following modules define the functional scope that should be presented to the client.
+            </p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Module Area</th>
+                        <th>Description</th>
+                        <th>Business Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Organization Management</td>
+                        <td>Onboarding organizations, managing organization details, business status, branch limits, and operating profile</td>
+                        <td>Supports client setup, expansion, and centralized control</td>
+                    </tr>
+                    <tr>
+                        <td>User and Role Management</td>
+                        <td>Assigning role-based access to finance, operations, management, and oversight users</td>
+                        <td>Reduces access risk and improves accountability</td>
+                    </tr>
+                    <tr>
+                        <td>Branch Management</td>
+                        <td>Structuring branches, head office access, and branch-aware visibility</td>
+                        <td>Enables multi-location control and clearer operational responsibility</td>
+                    </tr>
+                    <tr>
+                        <td>Customers and Billing</td>
+                        <td>Customer records, invoice workflows, invoice items, balances, and payment-linked operations</td>
+                        <td>Improves revenue control and billing visibility</td>
+                    </tr>
+                    <tr>
+                        <td>Expenses and Approvals</td>
+                        <td>Expense creation, status management, approval awareness, and spend tracking</td>
+                        <td>Strengthens spend governance and policy enforcement</td>
+                    </tr>
+                    <tr>
+                        <td>Payroll</td>
+                        <td>Compensation-related workflow support and payroll access by role</td>
+                        <td>Creates structured control over payroll operations</td>
+                    </tr>
+                    <tr>
+                        <td>General Ledger and Journal Posting</td>
+                        <td>GL posting, chart of accounts, journal entries, and statement viewing</td>
+                        <td>Supports accounting discipline and financial reporting integrity</td>
+                    </tr>
+                    <tr>
+                        <td>Reports and Trial Balance</td>
+                        <td>Financial reports, transaction summaries, statement exports, and trial balance views</td>
+                        <td>Improves decision support and finance visibility</td>
+                    </tr>
+                    <tr>
+                        <td>Asset Management</td>
+                        <td>Asset-related records and role-based access to asset data</td>
+                        <td>Supports broader finance operations beyond daily transactions</td>
+                    </tr>
+                    <tr>
+                        <td>Audit and Traceability</td>
+                        <td>Audit logs, read-only review workflows, and evidence visibility</td>
+                        <td>Improves compliance readiness and accountability</td>
+                    </tr>
+                    <tr>
+                        <td>Demo and Subscription Management</td>
+                        <td>Demo request approval, access-link generation, and subscription oversight</td>
+                        <td>Supports the sales-to-activation lifecycle for the platform</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="footer-note">
+                <span>Tia Client Proposal</span>
+                <span>Page 4</span>
+            </div>
+        </section>
+
+        <section class="page">
+            <p class="section-tag">User Model</p>
+            <h3>Role-Based Operating Structure</h3>
+            <p>
+                Tia is designed around a role-sensitive operating model. This is a major strength of the product and should be highlighted clearly in the proposal because it demonstrates governance, scalability, and practical usability across different business responsibilities.
+            </p>
+
+            <div class="role-grid">
+                <div class="card">
+                    <h4>Super Admin</h4>
+                    <p>Platform-level workspace for managing organizations, demo requests, subscriptions, and platform settings.</p>
+                </div>
+                <div class="card">
+                    <h4>Business Admin</h4>
+                    <p>Business-level control over branches, payroll, users, and organization-wide setup.</p>
+                </div>
+                <div class="card">
+                    <h4>Manager / Head of Operations</h4>
+                    <p>Operational oversight, reporting access, and GL-related visibility for business leaders.</p>
+                </div>
+                <div class="card">
+                    <h4>Staff / Operations</h4>
+                    <p>Frontline operational use for day-to-day workflows under controlled access boundaries.</p>
+                </div>
+                <div class="card">
+                    <h4>Auditor</h4>
+                    <p>Read-only visibility into reports, ledgers, and audit-related information to support oversight and review.</p>
+                </div>
+                <div class="card">
+                    <h4>Account</h4>
+                    <p>Finance-focused role with access to payroll, trial balance, ledgers, and broader accounting workflows.</p>
+                </div>
+            </div>
+
+            <p class="section-tag" style="margin-top: 18px;">Control Principle</p>
+            <h3>Why This Matters to the Client</h3>
+            <div class="two-col">
+                <div class="soft-card">
+                    <ul>
+                        <li>Each user sees the tools relevant to their job.</li>
+                        <li>Sensitive finance information can be restricted by role and branch.</li>
+                        <li>Management and auditors can review activity without changing records.</li>
+                    </ul>
+                </div>
+                <div class="accent-card">
+                    <ul>
+                        <li>Platform administrators can manage multiple client organizations from one system.</li>
+                        <li>The model is suitable for both internal deployment and SaaS delivery.</li>
+                        <li>The approach improves training, adoption, and accountability.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-note">
+                <span>Tia Client Proposal</span>
+                <span>Page 5</span>
+            </div>
+        </section>
+
+        <section class="page">
+            <p class="section-tag">Technology</p>
+            <h3>Technical Architecture and Security Approach</h3>
+            <div class="two-col">
+                <div>
+                    <p>
+                        Tia is structured as a modular web application with separate presentation pages, role-aware workspaces, shared utilities, modular business features, and a Supabase-backed data layer. This architecture is appropriate for phased delivery because it allows new modules and workflows to be expanded without rebuilding the core platform.
+                    </p>
+                    <p>
+                        The backend model is designed for multi-tenant usage, with organization-level data isolation and table structures that align with finance and operations workflows.
+                    </p>
+                </div>
+                <div class="soft-card">
+                    <h4>Architecture Highlights</h4>
+                    <ul>
+                        <li>Frontend built with modular HTML, CSS, and JavaScript</li>
+                        <li>Supabase authentication and database integration</li>
+                        <li>Role-based routing and workspace rendering</li>
+                        <li>Row-level data isolation for business tenants</li>
+                        <li>Support for demo, trial, and live operating modes</li>
+                    </ul>
+                </div>
+            </div>
+
+            <p class="section-tag" style="margin-top: 18px;">Data Model</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Layer</th>
+                        <th>Current Direction</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Authentication</td>
+                        <td>Supabase Auth with live user sessions and metadata-backed role resolution</td>
+                    </tr>
+                    <tr>
+                        <td>Tenant Structure</td>
+                        <td>Businesses, branches, business members, profiles, and platform admins</td>
+                    </tr>
+                    <tr>
+                        <td>Operations Data</td>
+                        <td>Customers, invoices, payments, expenses, suppliers, products, assets, payroll-related support</td>
+                    </tr>
+                    <tr>
+                        <td>Finance Data</td>
+                        <td>Chart of accounts, journal entries, ledger lines, tax rates, and reporting outputs</td>
+                    </tr>
+                    <tr>
+                        <td>Oversight and Lifecycle</td>
+                        <td>Subscriptions, audit logs, demo requests, and demo access links</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                From a client perspective, the value of this architecture is straightforward: it supports secure growth, cleaner reporting, easier maintenance, and a credible foundation for operational scale.
+            </p>
+
+            <div class="footer-note">
+                <span>Tia Client Proposal</span>
+                <span>Page 6</span>
+            </div>
+        </section>
+
+        <section class="page">
+            <p class="section-tag">Delivery Model</p>
+            <h3>Recommended Implementation Approach</h3>
+            <p>
+                Because the product foundation already exists, the recommended approach is not to restart from scratch but to move through a structured completion and deployment roadmap. This reduces waste, accelerates time to value, and allows the client to benefit from the existing architecture while refining the remaining business workflows.
+            </p>
+
+            <table class="timeline">
+                <thead>
+                    <tr>
+                        <th>Phase</th>
+                        <th>Focus</th>
+                        <th>Indicative Activities</th>
+                        <th>Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Phase 1</td>
+                        <td>Foundation Stabilization</td>
+                        <td>Validate live data connections, confirm role access, finalize organization onboarding, and harden navigation and permissions.</td>
+                        <td>Stable core platform ready for controlled pilot usage.</td>
+                    </tr>
+                    <tr>
+                        <td>Phase 2</td>
+                        <td>Workflow Completion</td>
+                        <td>Complete create and edit forms for invoices, expenses, and operational data capture. Refine approval-related workflows.</td>
+                        <td>Usable end-to-end operational workflow for key finance activities.</td>
+                    </tr>
+                    <tr>
+                        <td>Phase 3</td>
+                        <td>Finance Depth</td>
+                        <td>Enhance chart of accounts support, reporting, trial balance workflows, and accounting controls.</td>
+                        <td>Stronger accounting credibility and deeper reporting value.</td>
+                    </tr>
+                    <tr>
+                        <td>Phase 4</td>
+                        <td>Commercial and Scale Readiness</td>
+                        <td>Billing automation, subscription enforcement, support workflows, platform reporting, and client rollout processes.</td>
+                        <td>Deployment-ready SaaS operating model with lifecycle management.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="section-tag" style="margin-top: 18px;">Indicative Timeline</p>
+            <p>
+                A realistic client engagement would treat implementation as a phased rollout rather than a single delivery event. Exact timing should be finalized after requirements confirmation, but the current product maturity supports a staged delivery model with early pilot visibility followed by deeper finance capability in later phases.
+            </p>
+
+            <div class="footer-note">
+                <span>Tia Client Proposal</span>
+                <span>Page 7</span>
+            </div>
+        </section>
+
+        <section class="page">
+            <p class="section-tag">Deliverables</p>
+            <h3>Expected Client Deliverables</h3>
+            <div class="deliverable-grid">
+                <div class="card">
+                    <h4>Platform Deliverables</h4>
+                    <ul>
+                        <li>Client-ready branded web application</li>
+                        <li>Secure login and role-based workspace routing</li>
+                        <li>Organization, branch, and user administration flows</li>
+                        <li>Finance workflow modules aligned to approved scope</li>
+                        <li>Reporting and export capability for supported statements</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Deployment Deliverables</h4>
+                    <ul>
+                        <li>Configured Supabase project and security policies</li>
+                        <li>Database schema and access policies for live use</li>
+                        <li>Seed or onboarding logic for client activation</li>
+                        <li>Demo and trial process for evaluation and adoption</li>
+                        <li>Basic operational handover for admins and key users</li>
+                    </ul>
+                </div>
+            </div>
+
+            <p class="section-tag" style="margin-top: 18px;">Assumptions</p>
+            <div class="soft-card">
+                <ul>
+                    <li>This proposal assumes the client wants a finance operations platform rather than a simple brochure website.</li>
+                    <li>Commercial pricing, hosting cost, support SLA, and final implementation timeline should be finalized after scope confirmation.</li>
+                    <li>Any client-specific integrations, regulatory requirements, or custom reporting needs should be handled in the discovery and solution refinement stage.</li>
+                </ul>
+            </div>
+
+            <p class="section-tag" style="margin-top: 18px;">Optional Commercial Section</p>
+            <p>
+                If this document is being presented formally to a paying client, a final version can include a dedicated commercial page covering implementation cost, support model, change request handling, and post-launch maintenance options. Since no pricing direction was supplied in the source materials, this version keeps the proposal commercially neutral and scope-focused.
+            </p>
+
+            <div class="footer-note">
+                <span>Tia Client Proposal</span>
+                <span>Page 8</span>
+            </div>
+        </section>
+
+        <section class="page">
+            <p class="section-tag">Value Proposition</p>
+            <h3>Expected Business Benefits</h3>
+            <div class="benefit-grid">
+                <div class="card">
+                    <h4>Operational Control</h4>
+                    <p>Centralized workflows reduce fragmented processing and create clearer ownership across finance tasks.</p>
+                </div>
+                <div class="card">
+                    <h4>Visibility</h4>
+                    <p>Management and finance teams gain a clearer picture of transactions, branch performance, and reporting outputs.</p>
+                </div>
+                <div class="card">
+                    <h4>Security</h4>
+                    <p>Role-based permissions and business isolation reduce access risk and improve governance.</p>
+                </div>
+                <div class="card">
+                    <h4>Scalability</h4>
+                    <p>The product structure supports expansion across more users, more branches, and more client organizations.</p>
+                </div>
+                <div class="card">
+                    <h4>Audit Readiness</h4>
+                    <p>Traceability, controlled visibility, and ledger-aligned reporting strengthen confidence during review cycles.</p>
+                </div>
+                <div class="card">
+                    <h4>Commercial Readiness</h4>
+                    <p>Demo requests, onboarding, and subscription oversight create a credible path from interest to paid usage.</p>
+                </div>
+            </div>
+
+            <p class="section-tag" style="margin-top: 18px;">Conclusion</p>
+            <h3>Recommendation</h3>
+            <p>
+                Tia should be presented to the client as a finance operations platform with a strong governance model, not simply as a dashboard application. Its current architecture already supports the core foundation required for a modern multi-tenant business finance system, and the remaining work is best positioned as phased implementation and product completion.
+            </p>
+            <p>
+                The platform is especially compelling for organizations that need structured access, branch-aware control, stronger reporting, and a practical path away from manual finance administration. With phased delivery and client-specific refinement, Tia can serve as a scalable operational backbone for finance teams and business leadership.
+            </p>
+
+            <div class="accent-card" style="margin-top: 18px;">
+                <h4>Next Step</h4>
+                <p>The next recommended step is to convert this proposal into a final client issue version with client name, commercial terms, timeline commitment, and any organization-specific scope adjustments.</p>
+            </div>
+
+            <div class="footer-note">
+                <span>Tia Client Proposal</span>
+                <span>Page 9</span>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

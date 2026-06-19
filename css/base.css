@@ -1,0 +1,94 @@
+:root {
+    --bg: #f3efe7;
+    --bg-soft: #f7f3ec;
+    --panel: #fffdf8;
+    --panel-strong: #17313e;
+    --ink: #13212b;
+    --muted: #66757f;
+    --line: #ded6c7;
+    --accent: #b85c38;
+    --accent-deep: #8d3f20;
+    --accent-soft: #f2d7ca;
+    --pink: #f04f93;
+    --success: #157347;
+    --warning: #b7791f;
+    --danger: #b54545;
+    --shadow: 0 22px 40px rgba(20, 31, 40, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    /* Lock root scale so browser default font preference does not resize app typography */
+    font-size: 16px !important;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    font-family: "Manrope", sans-serif;
+    font-size: 15px;
+    line-height: 1.4;
+    background:
+        radial-gradient(circle at top right, rgba(184, 92, 56, 0.14), transparent 28%),
+        linear-gradient(180deg, var(--bg-soft) 0%, #efe7dc 100%);
+    color: var(--ink);
+}
+
+@keyframes riseIn {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes floatCard {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes softPulse {
+    0%,
+    100% {
+        box-shadow: 0 22px 40px rgba(20, 31, 40, 0.08);
+    }
+    50% {
+        box-shadow: 0 28px 46px rgba(176, 66, 119, 0.16);
+    }
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

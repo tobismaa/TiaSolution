@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tia Client Proposal V2</title>
+    <style>
+        :root {
+            --bg: #eef1ee;
+            --paper: #fffdf8;
+            --ink: #20302b;
+            --muted: #66756f;
+            --line: #d8ddd7;
+            --deep: #1f3a34;
+            --deep-2: #2f5a50;
+            --accent: #c38a43;
+            --accent-soft: #f4e7d5;
+            --soft: #f6f4ef;
+            --mint: #e6efe8;
+            --shadow: rgba(31, 58, 52, 0.12);
+            --page-pad-x: 16mm;
+            --page-pad-y: 14mm;
+            --radius-lg: 7mm;
+            --radius-md: 5mm;
+            --radius-sm: 4mm;
+        }
+
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+        body { padding: 24px; }
+
+        .document {
+            width: 297mm;
+            margin: 0 auto;
+        }
+
+        .page {
+            min-height: 182mm;
+            background: var(--paper);
+            margin: 0 auto 18px;
+            padding: var(--page-pad-y) var(--page-pad-x);
+            box-shadow: 0 16px 38px var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 1px solid rgba(216, 221, 215, 0.8);
+            pointer-events: none;
+        }
+
+        .cover {
+            background:
+                radial-gradient(circle at top right, rgba(195, 138, 67, 0.16), transparent 26%),
+                linear-gradient(180deg, #f9f4ea 0%, #fffdf8 100%);
+        }
+
+        .cover::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 20mm;
+            background: linear-gradient(90deg, var(--deep), var(--deep-2));
+        }
+
+        .section {
+            position: relative;
+            z-index: 1;
+        }
+
+        .cover .section { padding-top: 15mm; }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14mm;
+        }
+
+        .brand-mark {
+            width: 18mm;
+            height: 18mm;
+            border-radius: 5mm;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(145deg, var(--deep), var(--deep-2));
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            box-shadow: 0 8px 18px rgba(31, 58, 52, 0.18);
+        }
+
+        .brand-copy h1, .brand-copy p { margin: 0; }
+        .brand-copy h1 {
+            font-size: 18px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--deep);
+        }
+        .brand-copy p {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--deep);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .eyebrow::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .cover-layout {
+            display: grid;
+            grid-template-columns: 1.25fr 0.75fr;
+            gap: 10mm;
+            align-items: end;
+        }
+
+        .cover h2 {
+            margin: 10px 0 10px;
+            font-size: 29px;
+            line-height: 1.12;
+            color: var(--deep);
+            max-width: 150mm;
+        }
+
+        .lead {
+            margin: 0 0 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--muted);
+            max-width: 150mm;
+        }
+
+        .snapshot {
+            border-radius: var(--radius-lg);
+            background: linear-gradient(180deg, #fbf7ef 0%, #f6efe2 100%);
+            border: 1px solid #ead9be;
+            padding: 12px 14px;
+        }
+
+        .meta-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 12mm;
+        }
+
+        .meta-chip {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
+            padding: 8px 10px;
+            background: rgba(255, 253, 248, 0.9);
+        }
+
+        .meta-chip strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            color: var(--deep);
+        }
+
+        .meta-chip span {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .section-tag {
+            margin: 0 0 8px;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--deep-2);
+            font-weight: 700;
+        }
+
+        h3 {
+            margin: 0 0 8px;
+            font-size: 22px;
+            line-height: 1.2;
+            color: var(--deep);
+        }
+
+        h4 {
+            margin: 0 0 6px;
+            font-size: 14px;
+            color: var(--deep);
+        }
+
+        p {
+            margin: 0 0 7px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        li + li { margin-top: 3px; }
+        .stack-18 > * + * { margin-top: 12px; }
+
+        .grid-2, .grid-3, .stats, .feature-role-grid {
+            display: grid;
+            gap: 9px;
+        }
+
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .grid-3 { grid-template-columns: repeat(3, 1fr); }
+        .stats { grid-template-columns: repeat(4, 1fr); }
+        .feature-role-grid { grid-template-columns: repeat(5, 1fr); }
+
+        .card,
+        .soft-card,
+        .accent-card,
+        .stat,
+        .feature-role-card {
+            border-radius: var(--radius-md);
+            padding: 8px 9px;
+        }
+
+        .card,
+        .feature-role-card {
+            border: 1px solid var(--line);
+            background: #fffdfa;
+        }
+
+        .soft-card {
+            border: 1px solid #e8e3d9;
+            background: var(--soft);
+        }
+
+        .accent-card {
+            border: 1px solid #d9dfd8;
+            background: var(--mint);
+        }
+
+        .stat {
+            border: 1px solid var(--line);
+            background: #fcfbf7;
+        }
+
+        .stat strong {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 18px;
+            color: var(--deep);
+        }
+
+        .stat span {
+            font-size: 10px;
+            line-height: 1.3;
+            color: var(--muted);
+        }
+
+        .dashboard-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 8px;
+            table-layout: fixed;
+        }
+
+        .dashboard-table td {
+            vertical-align: top;
+            padding: 0;
+            border: none;
+        }
+
+        .dashboard-box {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
+            background: #fffdfa;
+            padding: 8px 9px;
+            height: 100%;
+        }
+
+        .dashboard-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .dashboard-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--deep);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+
+        .flow-row {
+            display: grid;
+            grid-template-columns: 1fr 14px 1fr 14px 1fr;
+            gap: 3px;
+            margin-top: 6px;
+        }
+
+        .flow-node {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            background: #fcfbf7;
+            padding: 6px;
+        }
+
+        .flow-node strong {
+            display: block;
+            margin-bottom: 2px;
+            font-size: 10px;
+            color: var(--deep);
+        }
+
+        .flow-node span {
+            display: block;
+            font-size: 9px;
+            line-height: 1.25;
+            color: var(--muted);
+        }
+
+        .flow-arrow {
+            display: grid;
+            place-items: center;
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .mini-chart {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .mini-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .mini-bar span {
+            width: 100%;
+            height: 24px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, var(--deep-2), var(--accent));
+        }
+
+        .mini-bar label {
+            font-size: 8px;
+            line-height: 1.15;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .feature-role-card ul {
+            padding-left: 16px;
+            font-size: 10px;
+            line-height: 1.3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        th, td {
+            border: 1px solid var(--line);
+            padding: 7px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f4f1ea;
+            color: var(--deep);
+            font-weight: 700;
+        }
+
+        .grid-2,
+        .grid-3,
+        .stats,
+        .feature-role-grid,
+        .card,
+        .soft-card,
+        .accent-card,
+        .stat,
+        .feature-role-card,
+        .dashboard-box,
+        table,
+        tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        @page {
+            size: A4 landscape;
+            margin: 8mm;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+            .document {
+                width: auto;
+                margin: 0;
+            }
+            .page {
+                margin: 0;
+                box-shadow: none;
+                break-after: page;
+                page-break-after: always;
+            }
+            .page:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="document">
+        <section class="page cover">
+            <div class="section">
+                <div class="brand">
+                    <div class="brand-mark">T</div>
+                    <div class="brand-copy">
+                        <h1>Tia</h1>
+                        <p>Finance operating system</p>
+                    </div>
+                </div>
+
+                <div class="cover-layout">
+                    <div>
+                        <span class="eyebrow">Client Proposal</span>
+                        <h2>Tia ERP Proposal for Finance Operations, Controls, and Reporting</h2>
+                        <p class="lead">A practical and presentation-ready proposal for implementing a multi-role finance platform that helps organizations manage daily workflows, approvals, branch operations, reporting, and audit visibility from one secure system.</p>
+                        <p class="lead">This version focuses on the client-facing dashboards only and shows how each workspace functions in day-to-day use.</p>
+                    </div>
+
+                    <aside class="snapshot">
+                        <h3>Proposal Snapshot</h3>
+                        <p><strong>Solution Type:</strong> Multi-tenant finance operations platform</p>
+                        <p><strong>Primary Users:</strong> Business admins, operations leads, finance teams, operations staff, and auditors</p>
+                        <p><strong>Delivery Model:</strong> Phased implementation</p>
+                        <p><strong>Recommended Engagement:</strong> Fixed-scope rollout with milestone delivery</p>
+                    </aside>
+                </div>
+
+                <div class="meta-strip">
+                    <div class="meta-chip">
+                        <strong>Prepared For</strong>
+                        <span>Prospective Client</span>
+                    </div>
+                    <div class="meta-chip">
+                        <strong>Prepared By</strong>
+                        <span>Tia Product Team</span>
+                    </div>
+                    <div class="meta-chip">
+                        <strong>Date</strong>
+                        <span>June 9, 2026</span>
+                    </div>
+                    <div class="meta-chip">
+                        <strong>Purpose</strong>
+                        <span>Client presentation and scope alignment</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="page">
+            <div class="section stack-18">
+                <div>
+                    <p class="section-tag">Executive Snapshot</p>
+                    <h3>What Tia Solves</h3>
+                </div>
+
+                <div class="grid-2">
+                    <div class="soft-card">
+                        <h4>Current Business Problems</h4>
+                        <ul>
+                            <li>Finance processes spread across spreadsheets and disconnected tools</li>
+                            <li>Slow approvals and weak operational visibility</li>
+                            <li>Limited branch-level control</li>
+                            <li>Inconsistent user access and poor audit preparedness</li>
+                        </ul>
+                    </div>
+                    <div class="accent-card">
+                        <h4>Tia's Response</h4>
+                        <ul>
+                            <li>One system for finance operations and reporting</li>
+                            <li>Role-based access for each business function</li>
+                            <li>Business and branch-aware visibility</li>
+                            <li>Traceable workflows and audit-ready reporting</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="stats">
+                    <div class="stat">
+                        <strong>5</strong>
+                        <span>Client-facing dashboards in active operational use</span>
+                    </div>
+                    <div class="stat">
+                        <strong>11+</strong>
+                        <span>Core functional areas across finance, operations, and oversight</span>
+                    </div>
+                    <div class="stat">
+                        <strong>Multi-branch</strong>
+                        <span>Scope-aware access for head office and branch activity</span>
+                    </div>
+                    <div class="stat">
+                        <strong>Supabase</strong>
+                        <span>Secure backend foundation for authentication and data</span>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="section-tag">Core Scope</p>
+                    <div class="grid-3">
+                        <div class="card">
+                            <h4>Operations</h4>
+                            <p>Customers, invoices, expenses, payroll support, asset records, approvals, and branch operations.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Finance</h4>
+                            <p>General ledger posting, chart of accounts, trial balance, financial reports, and export-ready outputs.</p>
+                        </div>
+                        <div class="card">
+                            <h4>Governance</h4>
+                            <p>User administration, branch structure, payroll oversight, role controls, and audit visibility.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="page">
+            <div class="section stack-18">
+                <div>
+                    <p class="section-tag">How It Works</p>
+                    <h3>How Each Dashboard Works</h3>
+                </div>
+
+                <table class="dashboard-table">
+                    <tr>
+                        <td>
+                            <div class="dashboard-box">
+                                <div class="dashboard-top">
+                                    <h4>Business Admin Dashboard</h4>
+                                    <span class="dashboard-badge">Control</span>
+                                </div>
+                                <p>Manage branch structure, payroll oversight, user access, and overall business controls.</p>
+                                <div class="flow-row">
+                                    <div class="flow-node"><strong>Users</strong><span>Create users and assign dashboard access.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Branches</strong><span>Set branch structure and scope visibility.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Payroll</strong><span>Review payroll setup and business-wide controls.</span></div>
+                                </div>
+                                <div class="mini-chart">
+                                    <div class="mini-bar"><span></span><label>Users</label></div>
+                                    <div class="mini-bar"><span></span><label>Branches</label></div>
+                                    <div class="mini-bar"><span></span><label>Payroll</label></div>
+                                    <div class="mini-bar"><span></span><label>Controls</label></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="dashboard-box">
+                                <div class="dashboard-top">
+                                    <h4>Head of Operations Dashboard</h4>
+                                    <span class="dashboard-badge">Review</span>
+                                </div>
+                                <p>Review branch activity, approve operational work, and monitor finance movement.</p>
+                                <div class="flow-row">
+                                    <div class="flow-node"><strong>Queue</strong><span>See pending branch transactions and requests.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Approve</strong><span>Review invoices, expenses, and GL postings.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Report</strong><span>Track due values, spend watch, and branch performance.</span></div>
+                                </div>
+                                <div class="mini-chart">
+                                    <div class="mini-bar"><span></span><label>Queue</label></div>
+                                    <div class="mini-bar"><span></span><label>Approvals</label></div>
+                                    <div class="mini-bar"><span></span><label>Branch</label></div>
+                                    <div class="mini-bar"><span></span><label>Reports</label></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="dashboard-box">
+                                <div class="dashboard-top">
+                                    <h4>Finance Dashboard</h4>
+                                    <span class="dashboard-badge">Accounting</span>
+                                </div>
+                                <p>Review payroll-linked accounting, inspect ledgers, and produce trial balance and reports.</p>
+                                <div class="flow-row">
+                                    <div class="flow-node"><strong>Payroll</strong><span>Review payroll data and finance postings.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Ledgers</strong><span>Open ledgers and chart of accounts.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Reports</strong><span>Generate trial balance and accounting reports.</span></div>
+                                </div>
+                                <div class="mini-chart">
+                                    <div class="mini-bar"><span></span><label>Payroll</label></div>
+                                    <div class="mini-bar"><span></span><label>Ledgers</label></div>
+                                    <div class="mini-bar"><span></span><label>Trial Balance</label></div>
+                                    <div class="mini-bar"><span></span><label>Reports</label></div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="dashboard-box">
+                                <div class="dashboard-top">
+                                    <h4>Operations Dashboard</h4>
+                                    <span class="dashboard-badge">Post</span>
+                                </div>
+                                <p>Capture expenses, post ledger activity, and work within the active branch workflow.</p>
+                                <div class="flow-row">
+                                    <div class="flow-node"><strong>Capture</strong><span>Enter expenses and transaction details.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Post</strong><span>Submit GL postings and operational records.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Track</strong><span>Monitor pending approvals and monthly posting volume.</span></div>
+                                </div>
+                                <div class="mini-chart">
+                                    <div class="mini-bar"><span></span><label>Capture</label></div>
+                                    <div class="mini-bar"><span></span><label>Posting</label></div>
+                                    <div class="mini-bar"><span></span><label>Pending</label></div>
+                                    <div class="mini-bar"><span></span><label>Volume</label></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="dashboard-box">
+                                <div class="dashboard-top">
+                                    <h4>Auditor Dashboard</h4>
+                                    <span class="dashboard-badge">Read Only</span>
+                                </div>
+                                <p>Independently review reports, trial balance, ledgers, and audit trail visibility.</p>
+                                <div class="flow-row">
+                                    <div class="flow-node"><strong>Review</strong><span>Open trial balance and chart of accounts views.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Trace</strong><span>Inspect ledgers, payroll mapping, and activity history.</span></div>
+                                    <div class="flow-arrow">-&gt;</div>
+                                    <div class="flow-node"><strong>Validate</strong><span>Use reports to confirm balances and evidence.</span></div>
+                                </div>
+                                <div class="mini-chart">
+                                    <div class="mini-bar"><span></span><label>Trial Balance</label></div>
+                                    <div class="mini-bar"><span></span><label>Ledgers</label></div>
+                                    <div class="mini-bar"><span></span><label>Audit Trail</label></div>
+                                    <div class="mini-bar"><span></span><label>Validation</label></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="soft-card" style="height:100%;">
+                                <h4>Workflow View</h4>
+                                <p>This slide shows how each user group moves from action to review to reporting inside its own dashboard.</p>
+                                <ul>
+                                    <li>Admin focuses on structure and control</li>
+                                    <li>Operations focuses on transaction capture and posting</li>
+                                    <li>Finance focuses on ledgers, payroll mapping, and reports</li>
+                                    <li>Audit focuses on read-only validation</li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </section>
+
+        <section class="page">
+            <div class="section stack-18">
+                <div>
+                    <p class="section-tag">Role Features</p>
+                    <h3>Features Available to Each Role</h3>
+                </div>
+
+                <div class="feature-role-grid">
+                    <div class="feature-role-card">
+                        <h4>Business Admin</h4>
+                        <ul>
+                            <li>Manage users and access rights</li>
+                            <li>Manage branches and business structure</li>
+                            <li>Oversee payroll setup</li>
+                            <li>Monitor business-wide finance controls</li>
+                        </ul>
+                    </div>
+                    <div class="feature-role-card">
+                        <h4>Head of Operations</h4>
+                        <ul>
+                            <li>Review pending branch activity</li>
+                            <li>Approve invoices and expenses</li>
+                            <li>Monitor due values and spend watch</li>
+                            <li>View branch-level operational reports</li>
+                        </ul>
+                    </div>
+                    <div class="feature-role-card">
+                        <h4>Finance</h4>
+                        <ul>
+                            <li>Access payroll-linked finance workflows</li>
+                            <li>Open general ledgers and chart of accounts</li>
+                            <li>Generate trial balance</li>
+                            <li>Run financial reports and validations</li>
+                        </ul>
+                    </div>
+                    <div class="feature-role-card">
+                        <h4>Operations</h4>
+                        <ul>
+                            <li>Capture expenses and branch transactions</li>
+                            <li>Post GL activity</li>
+                            <li>Track posting volume and pending approvals</li>
+                            <li>Work within active branch scope</li>
+                        </ul>
+                    </div>
+                    <div class="feature-role-card">
+                        <h4>Auditor</h4>
+                        <ul>
+                            <li>Read-only access to trial balance and reports</li>
+                            <li>Inspect ledgers and audit trail</li>
+                            <li>Validate balances and control evidence</li>
+                            <li>Review without editing live data</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="soft-card">
+                        <h4>Access Principle</h4>
+                        <p>Each role sees only the functions required for its operational responsibility, reducing clutter and protecting sensitive records.</p>
+                    </div>
+                    <div class="accent-card">
+                        <h4>Client Value</h4>
+                        <p>This role-based model improves control, speeds adoption, and makes responsibilities easier to understand across teams.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="page">
+            <div class="section stack-18">
+                <div>
+                    <p class="section-tag">Implementation Scope</p>
+                    <h3>Proposed Delivery Modules</h3>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Included Scope</th>
+                            <th>Outcome</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Business Administration</td>
+                            <td>User setup, branch controls, payroll oversight, and business-wide access management</td>
+                            <td>Structured control for daily administration</td>
+                        </tr>
+                        <tr>
+                            <td>User and Access Management</td>
+                            <td>Role-based login, workspace routing, role permissions, and branch-aware access</td>
+                            <td>Safer and clearer access control</td>
+                        </tr>
+                        <tr>
+                            <td>Customer and Invoice Workflows</td>
+                            <td>Customer records, invoices, invoice items, and payment-related visibility</td>
+                            <td>Revenue operations in one system</td>
+                        </tr>
+                        <tr>
+                            <td>Expense and Approval Workflows</td>
+                            <td>Expense capture, status control, and approval-aware operations</td>
+                            <td>Better spend governance</td>
+                        </tr>
+                        <tr>
+                            <td>Finance and Reporting</td>
+                            <td>GL posting, chart of accounts, ledger statements, transaction summaries, trial balance, and exports</td>
+                            <td>Stronger reporting confidence</td>
+                        </tr>
+                        <tr>
+                            <td>Audit and Oversight</td>
+                            <td>Audit logs, read-only review access, and branch-aware reporting visibility</td>
+                            <td>Improved review and compliance readiness</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="grid-2">
+                    <div class="soft-card">
+                        <h4>Architecture</h4>
+                        <ul>
+                            <li>Modular frontend pages and workspaces</li>
+                            <li>Shared UI and feature modules</li>
+                            <li>Supabase authentication and database</li>
+                            <li>Multi-tenant data structure</li>
+                        </ul>
+                    </div>
+                    <div class="accent-card">
+                        <h4>Security Model</h4>
+                        <ul>
+                            <li>Business-level data separation</li>
+                            <li>Role-sensitive navigation and rendering</li>
+                            <li>Row-level security-ready structure</li>
+                            <li>Audit-oriented workflow design</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="page">
+            <div class="section stack-18">
+                <div>
+                    <p class="section-tag">Commercial Terms</p>
+                    <h3>Recommended Commercial Structure</h3>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Recommended Term</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Engagement Model</td>
+                            <td>Fixed-scope implementation with milestone-based delivery</td>
+                        </tr>
+                        <tr>
+                            <td>Commercial Basis</td>
+                            <td>One-time implementation fee plus optional post-launch support plan</td>
+                        </tr>
+                        <tr>
+                            <td>Payment Structure</td>
+                            <td>40% at project commencement, 35% after core module delivery, 25% at final deployment and sign-off</td>
+                        </tr>
+                        <tr>
+                            <td>Change Requests</td>
+                            <td>Any functionality outside approved scope to be costed and approved separately</td>
+                        </tr>
+                        <tr>
+                            <td>Support Window</td>
+                            <td>30-day post-launch stabilization support recommended</td>
+                        </tr>
+                        <tr>
+                            <td>Hosting and Third-Party Services</td>
+                            <td>To be billed separately or managed under a client-approved recurring service plan</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h4>Included</h4>
+                        <ul>
+                            <li>Solution setup and platform configuration</li>
+                            <li>Core workflow implementation within approved scope</li>
+                            <li>Role setup and access control structure</li>
+                            <li>Basic handover for administrators</li>
+                        </ul>
+                    </div>
+                    <div class="card">
+                        <h4>Not Included by Default</h4>
+                        <ul>
+                            <li>Custom third-party integrations not yet scoped</li>
+                            <li>Large data migration from external systems</li>
+                            <li>Advanced custom reports outside the approved package</li>
+                            <li>Ongoing managed support unless separately contracted</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="soft-card">
+                    <h4>Commercial Note</h4>
+                    <p>Final pricing should be attached as a client-specific annex once scope and delivery boundaries are approved.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="page">
+            <div class="section stack-18">
+                <div>
+                    <p class="section-tag">Implementation Timeline</p>
+                    <h3>Recommended Delivery Timeline</h3>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Week</th>
+                            <th>Phase</th>
+                            <th>Activities</th>
+                            <th>Output</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Week 1</td>
+                            <td>Discovery and Confirmation</td>
+                            <td>Confirm requirements, final role matrix, branch structure, reporting expectations, and rollout priorities</td>
+                            <td>Approved scope and delivery plan</td>
+                        </tr>
+                        <tr>
+                            <td>Week 2-3</td>
+                            <td>Platform Foundation</td>
+                            <td>Finalize organization setup, access rules, role routing, and live environment configuration</td>
+                            <td>Stable platform core</td>
+                        </tr>
+                        <tr>
+                            <td>Week 4-5</td>
+                            <td>Workflow Delivery</td>
+                            <td>Complete invoice, expense, user, branch, and operational workflows within approved scope</td>
+                            <td>Usable day-to-day operations layer</td>
+                        </tr>
+                        <tr>
+                            <td>Week 6-7</td>
+                            <td>Finance and Reporting</td>
+                            <td>Refine GL workflows, trial balance, exports, and management reporting views</td>
+                            <td>Client-ready reporting layer</td>
+                        </tr>
+                        <tr>
+                            <td>Week 8</td>
+                            <td>UAT and Handover</td>
+                            <td>Client review, fixes, admin handover, and launch readiness checks</td>
+                            <td>Go-live approval</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="grid-2">
+                    <div class="soft-card">
+                        <h4>Post-Go-Live Stabilization</h4>
+                        <p>Recommended 30-day support period for issue resolution, user support, and minor post-launch refinements.</p>
+                    </div>
+                    <div class="accent-card">
+                        <h4>Phase 2 Expansion</h4>
+                        <p>Optional second phase for billing automation, deeper approvals, custom reports, integrations, or sector-specific extensions.</p>
+                    </div>
+                </div>
+
+                <div class="grid-3">
+                    <div class="card">
+                        <h4>Operational Control</h4>
+                        <p>Centralized workflows reduce fragmented processing and create clearer ownership.</p>
+                    </div>
+                    <div class="card">
+                        <h4>Visibility</h4>
+                        <p>Management and finance teams gain clearer reporting across users and branches.</p>
+                    </div>
+                    <div class="card">
+                        <h4>Audit Readiness</h4>
+                        <p>Traceability and structured access improve review confidence and compliance support.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

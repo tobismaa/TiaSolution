@@ -1,0 +1,108 @@
+body[data-page="super-admin"] {
+    background:
+        radial-gradient(circle at top left, rgba(240, 79, 147, 0.08), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(184, 92, 56, 0.08), transparent 28%),
+        linear-gradient(180deg, #f7f0e6 0%, #f2e7da 100%);
+}
+
+body[data-page="super-admin"] .sidebar {
+    background: linear-gradient(180deg, rgba(18, 30, 40, 0.98), rgba(18, 30, 40, 0.94));
+}
+
+body[data-page="super-admin"] .main-panel {
+    background: rgba(255, 253, 248, 0.58);
+    backdrop-filter: blur(6px);
+}
+
+body[data-page="super-admin"] .super-admin-shell {
+    transform-origin: top center;
+}
+
+body[data-page="super-admin"] .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 8px 0 16px;
+    background: linear-gradient(180deg, rgba(247, 240, 230, 0.98), rgba(247, 240, 230, 0.82));
+    backdrop-filter: blur(10px);
+}
+
+body[data-page="super-admin"] .summary-strip {
+    margin-top: 12px;
+}
+
+body[data-page="super-admin"] .page-content {
+    padding-bottom: 28px;
+}
+
+body[data-page="super-admin"] .sidebar-card {
+    padding: 12px 14px;
+}
+
+body[data-page="super-admin"] .sidebar-card h3 {
+    margin: 6px 0 4px;
+}
+
+body[data-page="super-admin"] .sidebar-card p {
+    margin: 0;
+}
+
+body[data-page="super-admin"] .business-row-actions .btn,
+body[data-page="super-admin"] .super-admin-org-users-btn {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    line-height: 1.2;
+}
+
+body[data-page="super-admin"] .page-loading-overlay {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(13, 22, 29, 0.22);
+    backdrop-filter: blur(2px);
+    z-index: 250;
+    pointer-events: auto;
+}
+
+body[data-page="super-admin"] .page-loading-overlay[hidden] {
+    display: none !important;
+}
+
+body[data-page="super-admin"] .page-loading-dialog {
+    display: grid;
+    place-items: center;
+    width: 88px;
+    height: 88px;
+    border-radius: 20px;
+    background: rgba(255, 253, 248, 0.98);
+    border: 1px solid rgba(160, 140, 110, 0.18);
+    box-shadow: 0 20px 44px rgba(13, 22, 29, 0.18);
+}
+
+body[data-page="super-admin"] .page-loading-mark {
+    display: inline-block;
+    font-family: "Manrope", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #17313e;
+    animation: tia-spin 0.9s linear infinite;
+    transform-origin: center;
+}
+
+@keyframes tia-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 1100px) {
+    body[data-page="super-admin"] .sidebar {
+        position: static;
+        height: auto;
+    }
+}

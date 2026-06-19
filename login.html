@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tia Login</title>
+    <meta name="theme-color" content="#17313e">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=20260401-spinner1">
+</head>
+<body data-page="login">
+    <main class="auth-shell">
+        <section class="auth-panel auth-hero">
+            <p class="hero-tag">Finance control</p>
+            <h1>Run Tia with secure business login and role-based workflows.</h1>
+            <p class="hero-copy">Sign in with your live business account. Demo access is requested from the public site and unlocked after approval.</p>
+            <div class="auth-feature-list stack-list">
+                <div class="stack-item">
+                    <span>Business roles</span>
+                    <strong>Admin, manager, staff, auditor</strong>
+                </div>
+                <div class="stack-item">
+                    <span>Platform control</span>
+                    <strong>Super admin workspace</strong>
+                </div>
+                <div class="stack-item">
+                    <span>Pre-payment flow</span>
+                    <strong>Demo and trial access</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="auth-panel">
+            <div class="panel-head">
+                <h2>Sign In</h2>
+                <span class="badge draft">Supabase</span>
+            </div>
+            <p class="muted" id="authStatus">Use your business account to access the workspace.</p>
+            <div class="auth-error-banner" id="authErrorBanner" hidden tabindex="-1" role="alert" aria-live="assertive"></div>
+            <form id="loginForm" class="form-grid">
+                <label class="form-field">
+                    <span>Email</span>
+                    <input id="email" name="email" type="email" placeholder="name@company.com" required>
+                </label>
+                <label class="form-field">
+                    <span>Password</span>
+                    <input id="password" name="password" type="password" placeholder="Enter password" required>
+                </label>
+                <div class="button-row">
+                    <button class="btn btn-primary" type="submit" data-login-submit>
+                        <span class="btn-label">Sign In</span>
+                        <span class="spinner" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+
+            <div class="auth-divider">
+                <span>Need demo access?</span>
+            </div>
+
+            <div class="trial-card">
+                <div>
+                    <p class="sidebar-card-label">Access Review</p>
+                    <h3>Request demo access from the main site.</h3>
+                    <p class="muted">Super-admin account creation now lives in the platform dashboard, while demo requests stay on the public site.</p>
+                </div>
+                <a class="btn btn-primary" href="./index.html#request-demo">Request Demo</a>
+            </div>
+        </section>
+    </main>
+
+    <div class="page-loading-overlay" id="pageLoadingOverlay" hidden aria-hidden="true">
+        <div class="page-loading-dialog" role="status" aria-live="polite">
+            <span class="page-loading-mark" aria-hidden="true">TIA</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script type="module">
+        import { initLoginPage } from "./js/core/auth.js";
+        initLoginPage();
+    </script>
+</body>
+</html>

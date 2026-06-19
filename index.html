@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tia ERP</title>
+    <meta name="theme-color" content="#17313e">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="landing">
+    <main class="landing-shell">
+        <header class="landing-topbar landing-topbar--floating">
+            <div class="brand">
+                <div class="brand-mark">T</div>
+                <div>
+                    <p class="brand-name">Tia</p>
+                    <p class="brand-sub landing-sub">Finance operating system</p>
+                </div>
+            </div>
+            <nav class="landing-nav">
+                <a href="#features">Features</a>
+                <a href="#flow">Flow</a>
+                <a href="#request-demo">Demo</a>
+            </nav>
+            <div class="topbar-actions">
+                <a class="btn btn-secondary" href="./login.html">Sign In</a>
+                <a class="btn btn-primary" href="#request-demo" data-open-demo-modal>Request Demo</a>
+            </div>
+        </header>
+
+        <section class="landing-hero">
+            <div class="landing-copy">
+                <p class="hero-tag">Finance made practical</p>
+                <h1>Run your finance team with clarity, control, and confidence.</h1>
+                <p class="hero-copy">Tia combines invoices, expenses, reporting, and approvals into one focused workspace for growing teams.</p>
+                <div class="landing-actions">
+                    <a class="btn btn-primary" href="#request-demo" data-open-demo-modal>Request a Demo</a>
+                    <a class="btn btn-secondary" href="./login.html">Open Workspace</a>
+                </div>
+                <div class="pill-list mt-18">
+                    <span class="pill">Supabase</span>
+                    <span class="pill">Multi-role</span>
+                    <span class="pill">7-day demo</span>
+                </div>
+                <div class="landing-quick-stats">
+                    <article>
+                        <span>Approval speed</span>
+                        <strong>2.4x faster</strong>
+                    </article>
+                    <article>
+                        <span>Live role access</span>
+                        <strong>5 roles ready</strong>
+                    </article>
+                    <article>
+                        <span>Audit confidence</span>
+                        <strong>100% traceable</strong>
+                    </article>
+                </div>
+            </div>
+
+            <div class="landing-preview panel">
+                <div class="preview-header">
+                    <div>
+                        <p class="sidebar-card-label">Operational snapshot</p>
+                        <h3>Live finance board</h3>
+                    </div>
+                    <span class="badge pink">Live</span>
+                </div>
+                <div class="preview-kpis">
+                    <article>
+                        <span>Multi-branch Control</span>
+                        <strong>Centralized</strong>
+                    </article>
+                    <article>
+                        <span>Role-Based Access</span>
+                        <strong>5 roles ready</strong>
+                    </article>
+                    <article>
+                        <span>Audit Trail</span>
+                        <strong>Fully traceable</strong>
+                    </article>
+                </div>
+                <div class="preview-trend">
+                    <div class="trend-head">
+                        <p>Cash movement</p>
+                        <strong>+18.6%</strong>
+                    </div>
+                    <div class="trend-bars" aria-hidden="true">
+                        <span style="--h: 44%"></span>
+                        <span style="--h: 58%"></span>
+                        <span style="--h: 50%"></span>
+                        <span style="--h: 76%"></span>
+                        <span style="--h: 64%"></span>
+                        <span style="--h: 88%"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="feature-showcase" id="features">
+            <div class="section-intro">
+                <p class="hero-tag">What teams get</p>
+                <h2>Purpose-built tools for every role.</h2>
+            </div>
+            <div class="feature-grid mt-18">
+                <article class="panel feature-card">
+                    <p class="sidebar-card-label">Business Admin</p>
+                    <h3>Control the business.</h3>
+                    <p class="mini-insight">Set policy, manage access, and monitor every financial stream.</p>
+                </article>
+                <article class="panel feature-card">
+                    <p class="sidebar-card-label">Manager</p>
+                    <h3>Track operations.</h3>
+                    <p class="mini-insight">Approve spend, follow team performance, and keep targets on track.</p>
+                </article>
+                <article class="panel feature-card">
+                    <p class="sidebar-card-label">Auditor</p>
+                    <h3>Review with clarity.</h3>
+                    <p class="mini-insight">See complete trails, validate actions, and reduce compliance stress.</p>
+                </article>
+                <article class="panel feature-card">
+                    <p class="sidebar-card-label">Super Admin</p>
+                    <h3>Manage clients and users.</h3>
+                    <p class="mini-insight">Oversee businesses, control subscriptions, and support platform growth.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="how-it-works" id="flow">
+            <div class="section-intro">
+                <p class="hero-tag">How it works</p>
+                <h2>Start in minutes, not weeks.</h2>
+            </div>
+            <div class="steps-grid mt-18" id="stepsGrid">
+                <article class="panel step-card scroll-step">
+                    <span class="step-number">01</span>
+                    <h3>Request</h3>
+                    <p class="mini-insight">Share your business details and preferred role view.</p>
+                </article>
+                <article class="panel step-card scroll-step">
+                    <span class="step-number">02</span>
+                    <h3>Get Link</h3>
+                    <p class="mini-insight">Receive a private access link and ready-to-use sample data.</p>
+                </article>
+                <article class="panel step-card scroll-step">
+                    <span class="step-number">03</span>
+                    <h3>Explore</h3>
+                    <p class="mini-insight">Test approvals, invoices, expenses, and reports end to end.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="request-demo-section" id="request-demo">
+            <div class="request-layout">
+                <aside class="panel demo-aside">
+                    <div class="module-header">
+                        <div>
+                            <p class="hero-tag">Request a demo</p>
+                            <h2>Get a private demo link.</h2>
+                        </div>
+                        <span class="badge pink">7 days</span>
+                    </div>
+                    <p class="mini-insight mt-18">We will set up your sandbox with role-based sample data, finance workflows, and reporting templates so your team can evaluate quickly.</p>
+                    <div class="stack-list mt-18">
+                        <article class="stack-item">
+                            <span>Setup window</span>
+                            <strong>Within 24 hours</strong>
+                        </article>
+                        <article class="stack-item">
+                            <span>Support level</span>
+                            <strong>Guided onboarding</strong>
+                        </article>
+                        <article class="stack-item">
+                            <span>Data security</span>
+                            <strong>Isolated demo access</strong>
+                        </article>
+                    </div>
+                    <div class="button-row mt-18">
+                        <a class="btn btn-primary" href="#request-demo" data-open-demo-modal>Open Demo Form</a>
+                    </div>
+                </aside>
+                <div class="panel demo-form-panel demo-form-panel--summary">
+                    <div class="module-header">
+                        <div>
+                            <p class="hero-tag">Private access</p>
+                            <h3>Open the form in a modal and submit in one step.</h3>
+                        </div>
+                    </div>
+                    <p class="mini-insight mt-18">Visitors can review the offer on the page, then open a focused form without leaving the landing experience.</p>
+                    <div class="stack-list mt-18">
+                        <article class="stack-item">
+                            <span>Form fields</span>
+                            <strong>Business, contact, team size, role view</strong>
+                        </article>
+                        <article class="stack-item">
+                            <span>Submission flow</span>
+                            <strong>Sent straight to the review queue</strong>
+                        </article>
+                        <article class="stack-item">
+                            <span>User experience</span>
+                            <strong>Clean page, focused request flow</strong>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="business-modal" data-demo-request-modal hidden>
+            <div class="business-modal__backdrop" data-demo-request-close></div>
+            <div class="business-modal__dialog demo-request-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="demoRequestModalTitle">
+                <div class="business-modal__head">
+                    <div>
+                        <p class="hero-tag">Request a demo</p>
+                        <h3 id="demoRequestModalTitle">Get a private demo link.</h3>
+                    </div>
+                    <button class="icon-btn business-modal__close" type="button" aria-label="Close modal" data-demo-request-close>&times;</button>
+                </div>
+                <form id="demoRequestForm" class="form-grid">
+                    <div class="triple-grid">
+                        <label class="form-field">
+                            <span>Business</span>
+                            <input name="business_name" type="text" placeholder="Atlas Manufacturing" required>
+                        </label>
+                        <label class="form-field">
+                            <span>Name</span>
+                            <input name="contact_name" type="text" placeholder="Amina Yusuf" required>
+                        </label>
+                        <label class="form-field">
+                            <span>Email</span>
+                            <input name="email" type="email" placeholder="am@company.com" required>
+                        </label>
+                    </div>
+                    <div class="triple-grid">
+                        <label class="form-field">
+                            <span>Phone</span>
+                            <input name="phone" type="text" placeholder="+234..." required>
+                        </label>
+                        <label class="form-field">
+                            <span>Team Size</span>
+                            <select name="team_size" required>
+                                <option value="">Select</option>
+                                <option value="1-10">1-10</option>
+                                <option value="11-50">11-50</option>
+                                <option value="51-200">51-200</option>
+                                <option value="200+">200+</option>
+                            </select>
+                        </label>
+                        <label class="form-field">
+                            <span>Role View</span>
+                            <select name="preferred_role" required>
+                                <option value="">Choose</option>
+                                <option value="all_roles">All Roles</option>
+                                <option value="business_admin">Business Admin</option>
+                                <option value="manager">Manager</option>
+                                <option value="staff">Staff</option>
+                                <option value="auditor">Auditor</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label class="form-field">
+                        <span>Message</span>
+                        <textarea name="message" rows="4" placeholder="What do you want to see?" required></textarea>
+                    </label>
+                    <div class="button-row">
+                        <button class="btn btn-primary" type="submit">Submit</button>
+                        <p class="muted" id="demoRequestStatus">Sent to review.</p>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <footer class="landing-footer">
+            <div class="footer-brand">
+                <div class="brand">
+                    <div class="brand-mark">T</div>
+                    <div>
+                        <p class="brand-name">Tia ERP</p>
+                        <p class="muted">Modern finance operations for growing teams.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-links">
+                <a href="#features">Features</a>
+                <a href="#flow">How It Works</a>
+                <a href="#request-demo" data-open-demo-modal>Request Demo</a>
+            </div>
+            <div class="footer-meta">
+                <p class="muted">Built for speed, clarity, and control.</p>
+                <div class="pill-list">
+                    <span class="pill">Fast setup</span>
+                    <span class="pill">Role permissions</span>
+                    <span class="pill">Audit ready</span>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script type="module" src="./js/landing/request-demo.js"></script>
+    <script type="module" src="./js/landing/scroll-effects.js"></script>
+</body>
+</html>

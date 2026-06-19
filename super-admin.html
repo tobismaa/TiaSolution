@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tia Super Admin</title>
+    <meta name="theme-color" content="#17313e">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=20260401-spinner1">
+    <link rel="stylesheet" href="css/super-admin.css">
+</head>
+<body data-page="super-admin">
+    <div class="app-shell super-admin-shell">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">T</div>
+                <div>
+                    <p class="brand-name">Tia</p>
+                    <p class="brand-sub">Super Admin</p>
+                </div>
+            </div>
+
+            <div class="role-panel">
+                <p class="sidebar-card-label">Active Workspace</p>
+                <div class="role-panel-row">
+                    <strong id="workspaceName">Platform Workspace</strong>
+                    <span class="badge draft" id="subscriptionBadge">Live</span>
+                </div>
+                <p class="muted" id="roleSummary">Loading role access.</p>
+            </div>
+
+            <nav class="nav" id="sidebarNav"></nav>
+
+            <div class="sidebar-card">
+                <p class="sidebar-card-label">Current Period</p>
+                <h3 id="sidebarPeriod">March 2026</h3>
+                <p id="sidebarInsight">Platform overview loads from Supabase.</p>
+            </div>
+        </aside>
+
+        <main class="main-panel">
+            <header class="topbar">
+                <div>
+                    <p class="eyebrow" id="pageEyebrow">Platform control</p>
+                    <h1 id="pageTitle">Super Admin Dashboard</h1>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-primary" id="signOutButton" type="button">Sign Out</button>
+                </div>
+            </header>
+
+            <section class="summary-strip" id="summaryStrip"></section>
+            <section id="pageContent" class="page-content"></section>
+        </main>
+    </div>
+
+    <div class="page-loading-overlay" id="pageLoadingOverlay" hidden aria-hidden="true">
+        <div class="page-loading-dialog" role="status" aria-live="polite">
+            <span class="page-loading-mark" aria-hidden="true">TIA</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script type="module" src="./js/super-admin.js"></script>
+</body>
+</html>

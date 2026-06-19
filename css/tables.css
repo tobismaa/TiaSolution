@@ -1,0 +1,18 @@
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 14px;
+}
+
+table th,
+table td {
+    text-align: left;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee5d9;
+    font-size: 0.84rem;
+    line-height: 1.35;
+}
+
+table th {
+    font-size: 0.78rem;
+}

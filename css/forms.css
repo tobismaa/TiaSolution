@@ -1,0 +1,54 @@
+.form-grid {
+    display: grid;
+    gap: 14px;
+}
+
+.form-field {
+    display: grid;
+    gap: 6px;
+    color: var(--ink);
+    font-weight: 700;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: white;
+    color: var(--ink);
+    transition:
+        border-color 200ms ease,
+        box-shadow 200ms ease,
+        transform 200ms ease;
+}
+
+.form-field input:hover,
+.form-field select:hover,
+.form-field textarea:hover {
+    border-color: rgba(184, 92, 56, 0.45);
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    outline: none;
+    border-color: rgba(184, 92, 56, 0.62);
+    box-shadow: 0 0 0 4px rgba(184, 92, 56, 0.14);
+    transform: translateY(-1px);
+}
+
+.form-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.form-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}

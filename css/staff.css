@@ -1,0 +1,35 @@
+body[data-page="staff"] {
+    background:
+        radial-gradient(circle at top left, rgba(207, 129, 93, 0.08), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(28, 83, 120, 0.08), transparent 28%),
+        linear-gradient(180deg, #f7f0e6 0%, #f2e7da 100%);
+}
+
+body[data-page="staff"] .sidebar {
+    background: linear-gradient(180deg, rgba(19, 33, 43, 0.98), rgba(19, 33, 43, 0.94));
+}
+
+body[data-page="staff"] .main-panel {
+    background: rgba(255, 253, 248, 0.58);
+    backdrop-filter: blur(6px);
+}
+
+body[data-page="staff"] .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 8px 0 16px;
+    background: linear-gradient(180deg, rgba(247, 240, 230, 0.98), rgba(247, 240, 230, 0.82));
+    backdrop-filter: blur(10px);
+}
+
+body[data-page="staff"] .page-content {
+    padding-bottom: 28px;
+}
+
+@media (max-width: 1100px) {
+    body[data-page="staff"] .sidebar {
+        position: static;
+        height: auto;
+    }
+}

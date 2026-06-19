@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tia Workspace</title>
+    <meta name="theme-color" content="#17313e">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="app">
+    <main class="auth-shell" style="align-items:center; justify-items:center; min-height:100vh;">
+        <section class="auth-panel" style="grid-column:1/-1; text-align:center;">
+            <p class="hero-tag">Loading workspace</p>
+            <h1>Redirecting to your dashboard...</h1>
+            <p class="hero-copy">Tia is opening the right workspace for your role.</p>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

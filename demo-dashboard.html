@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tia Demo Dashboard</title>
+    <meta name="theme-color" content="#17313e">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="demo-dashboard">
+    <main class="auth-shell">
+        <section class="auth-panel auth-hero">
+            <p class="hero-tag">Demo dashboard</p>
+            <h1>Demo controls are separated from login and unlocked by granted access.</h1>
+            <p class="hero-copy">Use your private demo link first. Once granted, you can open any role workspace and start a guided trial from this dashboard.</p>
+            <div class="stack-list">
+                <div class="stack-item">
+                    <span>Access model</span>
+                    <strong>Private token verification</strong>
+                </div>
+                <div class="stack-item">
+                    <span>Available modes</span>
+                    <strong>Demo roles and trial mode</strong>
+                </div>
+                <div class="stack-item">
+                    <span>Workspace route</span>
+                    <strong>Launches into app shell</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="auth-panel">
+            <div class="panel-head">
+                <h2>Demo Controls</h2>
+                <span class="badge pink" id="demoGateBadge">Locked</span>
+            </div>
+            <p class="muted" id="demoDashboardStatus">No granted demo access found. Verify your private link to unlock controls.</p>
+
+            <div class="demo-grid mt-18">
+                <button class="btn btn-secondary demo-role-button" data-role="business_admin" type="button" disabled>Demo Admin</button>
+                <button class="btn btn-secondary demo-role-button" data-role="manager" type="button" disabled>Demo Manager</button>
+                <button class="btn btn-secondary demo-role-button" data-role="staff" type="button" disabled>Demo Staff</button>
+                <button class="btn btn-secondary demo-role-button" data-role="auditor" type="button" disabled>Demo Auditor</button>
+            </div>
+
+            <div class="button-row mt-18">
+                <button class="btn btn-primary" id="openWorkspaceButton" type="button" disabled>Open Demo Workspace</button>
+                <button class="btn btn-secondary" id="startTrialButton" type="button" disabled>Start Trial</button>
+            </div>
+
+            <div class="auth-divider">
+                <span>Access routes</span>
+            </div>
+
+            <div class="demo-links">
+                <a class="btn btn-secondary" href="./demo-access.html">Verify Demo Link</a>
+                <a class="btn btn-secondary" href="./login.html">Back to Login</a>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="./js/demo/demo-dashboard.js"></script>
+</body>
+</html>
