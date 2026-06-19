@@ -162,7 +162,7 @@ export async function initSuperAdminShell() {
         return;
     }
 
-    if (session.role !== ROLES.SUPER_ADMIN) {
+    if (session.role !== ROLES.SUPER_ADMIN || session.mode !== "live") {
         window.location.href = "./app.html";
         return;
     }

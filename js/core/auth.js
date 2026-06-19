@@ -111,7 +111,7 @@ export function initLoginPage() {
         try {
             await signInWithPassword(String(form.get("email") || ""), String(form.get("password") || ""));
             const session = await getCurrentSessionContext();
-            if (session?.role === ROLES.SUPER_ADMIN) {
+            if (session?.role === ROLES.SUPER_ADMIN && session?.mode === "live") {
                 window.location.href = "./super-admin.html";
                 return;
             }

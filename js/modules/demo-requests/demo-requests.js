@@ -81,6 +81,15 @@ function requestDataFrom(request) {
 function renderRequestRow(request) {
     const status = formatRequestStatus(request.status);
     const demoLinkCell = renderDemoLinkStore(request.token_plain);
+    const actionButtons = request.status === "approved"
+        ? `
+            ${request.has_link ? "" : `<button class="btn btn-primary generate-demo-link" data-request-id="${request.id}" type="button">Generate Link</button>`}
+            <button class="btn btn-secondary deactivate-demo-request" data-request-id="${request.id}" type="button">Deactivate</button>
+        `
+        : `<button class="btn btn-secondary approve-demo-request" data-request-id="${request.id}" type="button">Approve</button>`;
+    const feedback = request.status === "approved" && !request.has_link
+        ? `<p class="muted demo-request-feedback" id="feedback-${request.id}">Generate and store a permanent demo link.</p>`
+        : (request.status === "approved" ? "" : `<p class="muted demo-request-feedback" id="feedback-${request.id}">Approve the request to activate the demo user.</p>`);
 
     return `
         <tr class="demo-request-row" data-request-id="${request.id}" data-status="${request.status}" data-preferred-role="${request.preferred_role}" data-token-plain="${request.token_plain}" data-business-name="${request.business_name}" data-contact-name="${request.contact_name}" data-email="${request.email}" data-team-size="${request.team_size}" data-phone="${request.phone}" data-created-at="${request.created_at}" data-message="${request.message}">
@@ -111,12 +120,9 @@ function renderRequestRow(request) {
             </td>
             <td>
                 <div class="button-row" data-request-actions>
-                    ${request.status === "approved"
-                        ? `<button class="btn btn-secondary deactivate-demo-request" data-request-id="${request.id}" type="button">Deactivate</button>`
-                        : `<button class="btn btn-secondary approve-demo-request" data-request-id="${request.id}" type="button">Approve</button>`
-                    }
+                    ${actionButtons}
                 </div>
-                ${request.status === "approved" ? "" : `<p class="muted demo-request-feedback" id="feedback-${request.id}">Approve the request to activate the demo user.</p>`}
+                ${feedback}
             </td>
         </tr>
     `;
@@ -432,6 +438,43 @@ export function bindDemoRequestActions(container) {
                 button.disabled = false;
                 if (feedback) {
                     feedback.textContent = error.message || "Unable to approve request.";
+                }
+            } finally {
+                hidePageLoading();
+            }
+            return;
+        }
+
+        if (button.classList.contains("generate-demo-link")) {
+            const requestId = button.dataset.requestId;
+            const feedback = document.getElementById(`feedback-${requestId}`);
+            const row = findCardOrRow(button);
+            button.disabled = true;
+            if (feedback) {
+                feedback.textContent = "Generating permanent demo link...";
+            }
+            showPageLoading();
+
+            try {
+                const link = await generateDemoLink({
+                    id: requestId,
+                    preferred_role: row?.dataset.preferredRole || ""
+                });
+                const token = new URL(link).searchParams.get("token") || "";
+                setCachedToken(requestId, token);
+                if (row) {
+                    row.dataset.status = "approved";
+                    row.dataset.tokenPlain = token;
+                    replaceRow(container, row, "approved", token);
+                }
+                refreshTabCounts(container);
+                if (feedback) {
+                    feedback.textContent = "Permanent demo link generated.";
+                }
+            } catch (error) {
+                button.disabled = false;
+                if (feedback) {
+                    feedback.textContent = error.message || "Unable to generate demo link.";
                 }
             } finally {
                 hidePageLoading();

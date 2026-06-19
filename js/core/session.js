@@ -32,6 +32,39 @@ function decodeDemoSession(value) {
     }
 }
 
+function normalizeDemoRole(role) {
+    const normalized = String(role || "").trim().toLowerCase();
+    return DEMO_ROLES.includes(normalized) ? normalized : "";
+}
+
+function sanitizeDemoSession(session) {
+    if (!session || typeof session !== "object") {
+        return null;
+    }
+
+    const mode = String(session.mode || "").trim().toLowerCase();
+    if (!["demo", "trial"].includes(mode)) {
+        return null;
+    }
+
+    const role = normalizeDemoRole(session.role);
+    if (!role) {
+        return null;
+    }
+
+    const allowedRoles = Array.isArray(session.allowedRoles)
+        ? session.allowedRoles.map(normalizeDemoRole).filter(Boolean)
+        : [];
+
+    return {
+        ...session,
+        mode,
+        role,
+        grantedRole: session.grantedRole === "all_roles" ? "all_roles" : role,
+        allowedRoles: allowedRoles.length ? Array.from(new Set(allowedRoles)) : [role]
+    };
+}
+
 function updateDemoSessionQuery(session) {
     const url = new URL(window.location.href);
     if (!session) {
@@ -46,19 +79,21 @@ function updateDemoSessionQuery(session) {
 }
 
 export function saveDemoSession(role, mode = "demo", options = {}) {
+    const normalizedRole = normalizeDemoRole(role) || ROLES.BUSINESS_ADMIN;
+    const normalizedMode = String(mode || "demo").trim().toLowerCase() === "trial" ? "trial" : "demo";
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + DEFAULT_TRIAL_DAYS);
     const allowedRoles = Array.isArray(options.allowedRoles) && options.allowedRoles.length
-        ? options.allowedRoles
-        : (mode === "trial" ? DEMO_ROLES : [role]);
+        ? options.allowedRoles.map(normalizeDemoRole).filter(Boolean)
+        : (normalizedMode === "trial" ? DEMO_ROLES : [normalizedRole]);
 
     const session = {
-        mode,
-        role,
-        grantedRole: options.grantedRole || role,
-        allowedRoles,
-        fullName: String(options.fullName || "").trim() || getDefaultSessionName(role, mode),
-        businessName: mode === "demo" ? "Tia Demo Workspace" : "Tia Trial Workspace",
+        mode: normalizedMode,
+        role: normalizedRole,
+        grantedRole: options.grantedRole === "all_roles" ? "all_roles" : normalizedRole,
+        allowedRoles: allowedRoles.length ? Array.from(new Set(allowedRoles)) : [normalizedRole],
+        fullName: String(options.fullName || "").trim() || getDefaultSessionName(normalizedRole, normalizedMode),
+        businessName: normalizedMode === "demo" ? "Tia Demo Workspace" : "Tia Trial Workspace",
         currentPeriod: getCurrentPeriodLabel(),
         trialEndsAt: expiresAt.toISOString()
     };
@@ -75,10 +110,11 @@ export function clearStoredSession() {
 
 export function getStoredSession() {
     if (demoSessionMemory) {
+        demoSessionMemory = sanitizeDemoSession(demoSessionMemory);
         return demoSessionMemory;
     }
     const params = new URLSearchParams(window.location.search);
-    const parsed = decodeDemoSession(params.get(STORAGE_KEY));
+    const parsed = sanitizeDemoSession(decodeDemoSession(params.get(STORAGE_KEY)));
     demoSessionMemory = parsed;
     return parsed;
 }

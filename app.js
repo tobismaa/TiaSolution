@@ -10,7 +10,7 @@ async function redirectWorkspace() {
 
     switch (session.role) {
         case ROLES.SUPER_ADMIN:
-            window.location.href = "./super-admin.html";
+            window.location.href = session.mode === "live" ? "./super-admin.html" : "./login.html";
             return;
         case ROLES.BUSINESS_ADMIN:
             window.location.href = "./business-admin.html";

@@ -117,7 +117,7 @@ export async function initAppShell() {
         return;
     }
 
-    if (session.role === ROLES.SUPER_ADMIN) {
+    if (session.role === ROLES.SUPER_ADMIN && session.mode === "live") {
         window.location.href = `./super-admin.html${getPreservedSearch()}`;
         return;
     }

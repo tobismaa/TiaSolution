@@ -12,11 +12,6 @@ function buildExpiryDate(days = 7) {
     return expires.toISOString();
 }
 
-function isMissingTokenPlainError(error) {
-    const text = String(error?.message || "");
-    return text.includes("token_plain") || text.includes("schema cache");
-}
-
 export async function getDemoRequests() {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -48,37 +43,6 @@ export async function getDemoRequests() {
         .order("created_at", { ascending: false });
 
     const { data, error } = await queryWithToken;
-
-    if (error && isMissingTokenPlainError(error)) {
-        const { data: fallbackData, error: fallbackError } = await supabase
-            .from("demo_requests")
-            .select(`
-                id,
-                business_name,
-                contact_name,
-                email,
-                preferred_role,
-                status,
-                created_at,
-                message,
-                phone,
-                team_size,
-                demo_access_links (
-                    id,
-                    role,
-                    expires_at,
-                    revoked_at,
-                    used_at
-                )
-            `)
-            .order("created_at", { ascending: false });
-
-        if (fallbackError) {
-            throw fallbackError;
-        }
-
-        return fallbackData || [];
-    }
 
     if (error) {
         throw error;
@@ -165,17 +129,18 @@ export async function generateDemoLink(request) {
         throw new Error("Request must be approved before generating a token.");
     }
 
-    const { count, error: countError } = await supabase
+    const { data: existingLinks, error: existingLinkError } = await supabase
         .from("demo_access_links")
-        .select("id", { count: "exact", head: true })
+        .select("id, token_plain")
         .eq("request_id", request.id);
 
-    if (countError) {
-        throw countError;
+    if (existingLinkError) {
+        throw existingLinkError;
     }
 
-    if ((count || 0) > 0) {
-        throw new Error("A token has already been generated for this request.");
+    const existingLink = (existingLinks || [])[0];
+    if (existingLink?.token_plain) {
+        return `${window.location.origin}/demo-access.html?token=${encodeURIComponent(existingLink.token_plain)}`;
     }
 
     const tokenRole = request.preferred_role === "all_roles" ? "all_roles" : request.preferred_role;
@@ -184,31 +149,34 @@ export async function generateDemoLink(request) {
     const tokenHash = await sha256Hex(token);
     const expiresAt = buildExpiryDate(7);
 
-    const insertWithToken = await supabase.from("demo_access_links").insert({
-        request_id: request.id,
-        role: roleForInsert,
-        token_plain: token,
-        token_hash: tokenHash,
-        expires_at: expiresAt
-    });
+    if (existingLink?.id) {
+        const { error: updateError } = await supabase
+            .from("demo_access_links")
+            .update({
+                role: roleForInsert,
+                token_plain: token,
+                token_hash: tokenHash,
+                expires_at: expiresAt,
+                used_at: null,
+                revoked_at: null
+            })
+            .eq("id", existingLink.id);
 
-    if (insertWithToken.error && isMissingTokenPlainError(insertWithToken.error)) {
-        const { error: fallbackInsertError } = await supabase.from("demo_access_links").insert({
+        if (updateError) {
+            throw updateError;
+        }
+    } else {
+        const { error: insertError } = await supabase.from("demo_access_links").insert({
             request_id: request.id,
             role: roleForInsert,
+            token_plain: token,
             token_hash: tokenHash,
             expires_at: expiresAt
         });
 
-        if (fallbackInsertError) {
-            throw fallbackInsertError;
+        if (insertError) {
+            throw insertError;
         }
-
-        return `${window.location.origin}/demo-access.html?token=${encodeURIComponent(token)}`;
-    }
-
-    if (insertWithToken.error) {
-        throw insertWithToken.error;
     }
 
     return `${window.location.origin}/demo-access.html?token=${encodeURIComponent(token)}`;

@@ -3,7 +3,7 @@ export function getAccessBanner(session) {
         return { label: "No Session", tone: "due" };
     }
 
-    if (session.role === "super_admin") {
+    if (session.role === "super_admin" && session.mode === "live") {
         return { label: "Live", tone: "paid" };
     }
 
