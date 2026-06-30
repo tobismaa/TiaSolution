@@ -1,6 +1,7 @@
 import { clearStoredSession } from "./session.js";
 import { getCurrentSessionContext } from "./session.js";
 import { getSupabaseClient } from "./supabase-client.js";
+import { supabaseConfig } from "./supabase-config.js";
 import { ROLES } from "./roles.js";
 import { showAlertModal } from "../shared/modal.js";
 import { sendSecurityNotification } from "./security-notifications.js";
@@ -9,6 +10,7 @@ const LOGIN_SESSION_KEY = "tia_login_session_key";
 const REMEMBERED_LOGIN_EMAIL_KEY = "tia_login_identifier";
 const PENDING_TWO_FACTOR_KEY = "tia_pending_email_2fa";
 let sessionTimeoutMonitorStarted = false;
+let closeSessionReleaseStarted = false;
 
 function getApiBaseCandidates() {
     const explicitBase = String(window.TIA_API_BASE_URL || window.TIA_SUPABASE_CONFIG?.apiBaseUrl || "").trim();
@@ -95,29 +97,41 @@ function showLoginError(errorBanner, message) {
 }
 
 function getLoginSessionKey() {
-    let key = window.localStorage.getItem(LOGIN_SESSION_KEY);
+    const oldPersistentKey = window.localStorage.getItem(LOGIN_SESSION_KEY);
+    if (oldPersistentKey) {
+        window.localStorage.removeItem(LOGIN_SESSION_KEY);
+    }
+
+    let key = window.sessionStorage.getItem(LOGIN_SESSION_KEY);
     if (!key) {
-        key = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        window.localStorage.setItem(LOGIN_SESSION_KEY, key);
+        key = oldPersistentKey || window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        window.sessionStorage.setItem(LOGIN_SESSION_KEY, key);
     }
     return key;
 }
 
 function clearLoginSessionKey() {
     window.localStorage.removeItem(LOGIN_SESSION_KEY);
+    window.sessionStorage.removeItem(LOGIN_SESSION_KEY);
 }
 
 function isTwoFactorPending() {
-    return window.localStorage.getItem(PENDING_TWO_FACTOR_KEY) === "true";
+    const oldPersistentValue = window.localStorage.getItem(PENDING_TWO_FACTOR_KEY);
+    if (oldPersistentValue) {
+        window.localStorage.removeItem(PENDING_TWO_FACTOR_KEY);
+        window.sessionStorage.setItem(PENDING_TWO_FACTOR_KEY, oldPersistentValue);
+    }
+    return window.sessionStorage.getItem(PENDING_TWO_FACTOR_KEY) === "true";
 }
 
 function setTwoFactorPending(isPending) {
+    window.localStorage.removeItem(PENDING_TWO_FACTOR_KEY);
     if (isPending) {
-        window.localStorage.setItem(PENDING_TWO_FACTOR_KEY, "true");
+        window.sessionStorage.setItem(PENDING_TWO_FACTOR_KEY, "true");
         return;
     }
 
-    window.localStorage.removeItem(PENDING_TWO_FACTOR_KEY);
+    window.sessionStorage.removeItem(PENDING_TWO_FACTOR_KEY);
 }
 
 function getDashboardUrl(session) {
@@ -250,11 +264,13 @@ async function claimLoginSession() {
         clearLoginSessionKey();
         throw new Error("This user is already signed in elsewhere. Please log out from the active session first.");
     }
+
+    startCloseSessionRelease();
 }
 
 async function releaseLoginSession() {
     const supabase = getSupabaseClient();
-    const key = window.localStorage.getItem(LOGIN_SESSION_KEY);
+    const key = window.sessionStorage.getItem(LOGIN_SESSION_KEY) || window.localStorage.getItem(LOGIN_SESSION_KEY);
     if (!supabase || !key) {
         clearLoginSessionKey();
         return;
@@ -269,18 +285,67 @@ async function releaseLoginSession() {
     }
 }
 
+function startCloseSessionRelease() {
+    if (closeSessionReleaseStarted) {
+        return;
+    }
+
+    const supabase = getSupabaseClient();
+    const sessionKey = window.sessionStorage.getItem(LOGIN_SESSION_KEY);
+    if (!supabase || !sessionKey) {
+        return;
+    }
+
+    closeSessionReleaseStarted = true;
+    let accessToken = "";
+
+    supabase.auth.getSession().then(({ data }) => {
+        accessToken = data?.session?.access_token || "";
+    }).catch(() => {
+        accessToken = "";
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+        accessToken = session?.access_token || "";
+    });
+
+    const release = () => {
+        if (!accessToken || !window.sessionStorage.getItem(LOGIN_SESSION_KEY)) {
+            return;
+        }
+
+        try {
+            fetch(`${supabaseConfig.url}/rest/v1/rpc/end_user_login_session`, {
+                method: "POST",
+                keepalive: true,
+                headers: {
+                    "apikey": supabaseConfig.publishableKey,
+                    "authorization": `Bearer ${accessToken}`,
+                    "content-type": "application/json"
+                },
+                body: JSON.stringify({ p_session_key: sessionKey })
+            });
+        } catch {
+            // Browser-close cleanup is best effort; sessionStorage still clears locally.
+        }
+    };
+
+    window.addEventListener("pagehide", release);
+}
+
 export function startLoginAttemptMonitor() {
     if (window.__TIA_LOGIN_ATTEMPT_MONITOR_STARTED__) {
         return;
     }
 
     const supabase = getSupabaseClient();
-    const sessionKey = window.localStorage.getItem(LOGIN_SESSION_KEY);
+    const sessionKey = window.sessionStorage.getItem(LOGIN_SESSION_KEY);
     if (!supabase || !sessionKey) {
         return;
     }
 
     window.__TIA_LOGIN_ATTEMPT_MONITOR_STARTED__ = true;
+    startCloseSessionRelease();
     startSessionTimeoutMonitor(supabase);
     const seenKey = `tia_login_attempt_seen_${sessionKey}`;
     let lastSeenAttemptAt = window.sessionStorage.getItem(seenKey) || "";

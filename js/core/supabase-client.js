@@ -2,6 +2,21 @@ import { supabaseConfig } from "./supabase-config.js";
 
 let client;
 
+function clearPersistentSupabaseAuth() {
+    try {
+        const projectRef = new URL(supabaseConfig.url).hostname.split(".")[0];
+        Object.keys(window.localStorage || {}).forEach((key) => {
+            const isSupabaseAuthKey = key === `sb-${projectRef}-auth-token`
+                || (key.startsWith("sb-") && key.endsWith("-auth-token"));
+            if (isSupabaseAuthKey) {
+                window.localStorage.removeItem(key);
+            }
+        });
+    } catch {
+        // If storage is unavailable, Supabase will still fall back to its runtime session.
+    }
+}
+
 export function getSupabaseClient() {
     if (client) {
         return client;
@@ -11,7 +26,15 @@ export function getSupabaseClient() {
         return null;
     }
 
-    client = window.supabase.createClient(supabaseConfig.url, supabaseConfig.publishableKey);
+    clearPersistentSupabaseAuth();
+    client = window.supabase.createClient(supabaseConfig.url, supabaseConfig.publishableKey, {
+        auth: {
+            persistSession: true,
+            storage: window.sessionStorage,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+        }
+    });
     return client;
 }
 
