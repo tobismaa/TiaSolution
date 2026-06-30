@@ -23,6 +23,8 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServerKey, {
     }
 });
 const recentNotifications = new Map();
+const USER_INVITE_ROLES = new Set(["business_admin", "manager", "staff", "account", "auditor"]);
+const PLATFORM_USER_ROLES = new Set(["super_admin", "business_admin", "manager", "staff", "account", "auditor"]);
 
 const mimeTypes = {
     ".css": "text/css; charset=utf-8",
@@ -97,6 +99,30 @@ function getBearerToken(request) {
     return backupMatch?.[1] || backupValue || "";
 }
 
+function getRequestOrigin(request) {
+    const origin = request.headers.origin || "";
+    if (origin) {
+        return origin.replace(/\/$/, "");
+    }
+
+    const referer = request.headers.referer || "";
+    if (referer) {
+        try {
+            return new URL(referer).origin;
+        } catch {
+            return "";
+        }
+    }
+
+    return "";
+}
+
+function getInviteRedirectUrl(request) {
+    const configuredAppUrl = String(process.env.APP_URL || process.env.PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+    const baseUrl = configuredAppUrl || getRequestOrigin(request) || `http://localhost:${port}`;
+    return `${baseUrl}/set-password.html`;
+}
+
 function decodeJwtPayload(token) {
     try {
         const payload = String(token || "").split(".")[1];
@@ -160,6 +186,272 @@ async function getAuthenticatedUser(token) {
     }
 
     return data.user;
+}
+
+async function getActorAccess(userId) {
+    const [{ data: platformAdmin }, { data: memberships }] = await Promise.all([
+        supabaseAdmin
+            .from("platform_admins")
+            .select("user_id, role, is_active")
+            .eq("user_id", userId)
+            .eq("is_active", true)
+            .maybeSingle(),
+        supabaseAdmin
+            .from("business_members")
+            .select(`
+                business_id,
+                role,
+                is_active,
+                businesses (
+                    name
+                )
+            `)
+            .eq("user_id", userId)
+            .eq("is_active", true)
+    ]);
+
+    return {
+        isPlatformAdmin: Boolean(platformAdmin?.user_id),
+        memberships: memberships || []
+    };
+}
+
+function toBranchSequence(code) {
+    const text = String(code || "").trim().toUpperCase();
+    const match = text.match(/(\d+)$/);
+    if (!match) {
+        return 0;
+    }
+    const parsed = Number(match[1]);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatBranchCode(sequence) {
+    return `BR-${String(sequence).padStart(3, "0")}`;
+}
+
+async function ensureHeadOfficeBranch(businessId) {
+    const { data: branches, error } = await supabaseAdmin
+        .from("branches")
+        .select("id, name, code, is_head_office")
+        .eq("business_id", businessId)
+        .order("created_at", { ascending: true });
+
+    if (error) {
+        throw error;
+    }
+
+    const rows = branches || [];
+    const existingHeadOffice = rows.find((branch) => Boolean(branch.is_head_office));
+    if (existingHeadOffice?.id) {
+        return existingHeadOffice.id;
+    }
+
+    const namedHeadOffice = rows.find((branch) => String(branch.name || "").trim().toLowerCase() === "head office");
+    if (namedHeadOffice?.id) {
+        await supabaseAdmin
+            .from("branches")
+            .update({ is_head_office: true })
+            .eq("business_id", businessId)
+            .eq("id", namedHeadOffice.id);
+        return namedHeadOffice.id;
+    }
+
+    const maxSequence = rows.reduce((max, row) => Math.max(max, toBranchSequence(row.code)), 0);
+    const { data: inserted, error: insertError } = await supabaseAdmin
+        .from("branches")
+        .insert({
+            business_id: businessId,
+            name: "Head Office",
+            code: formatBranchCode(maxSequence + 1),
+            is_head_office: true,
+            is_active: true
+        })
+        .select("id")
+        .single();
+
+    if (insertError) {
+        throw insertError;
+    }
+
+    return inserted?.id || null;
+}
+
+async function getBusinessName(businessId) {
+    if (!businessId) {
+        return "";
+    }
+
+    const { data } = await supabaseAdmin
+        .from("businesses")
+        .select("name")
+        .eq("id", businessId)
+        .maybeSingle();
+
+    return String(data?.name || "").trim();
+}
+
+function renderInviteEmail({ fullName, organizationName, inviteLink }) {
+    const safeName = escapeHtml(fullName || "there");
+    const safeOrganization = escapeHtml(organizationName || "Tia");
+    const safeInviteLink = escapeHtml(inviteLink);
+
+    return `
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>Create your Tia password</title>
+        </head>
+        <body style="margin:0;padding:0;background:#f3f7f5;font-family:Arial,Helvetica,sans-serif;color:#17313e;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f7f5;margin:0;padding:28px 12px;">
+                <tr>
+                    <td align="center">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #dce8e1;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(23,49,62,0.10);">
+                            <tr>
+                                <td style="background:#0f5f3f;padding:28px 30px;color:#ffffff;">
+                                    <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#bcebd2;">Tia Invitation</div>
+                                    <h1 style="margin:8px 0 0;font-size:26px;line-height:1.2;font-weight:800;color:#ffffff;">Create your password</h1>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:30px;">
+                                    <p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#294653;">Hello ${safeName},</p>
+                                    <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#294653;">An administrator invited you to ${safeOrganization} on Tia. Use the button below to create your password and activate your login.</p>
+                                    <table role="presentation" cellspacing="0" cellpadding="0" style="margin:26px 0;">
+                                        <tr>
+                                            <td style="border-radius:10px;background:#0f5f3f;">
+                                                <a href="${safeInviteLink}" style="display:inline-block;padding:14px 22px;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;">Create Password</a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <p style="margin:0;font-size:13px;line-height:1.55;color:#6b7f76;">If the button does not work, copy and paste this link into your browser:</p>
+                                    <p style="margin:8px 0 0;font-size:12px;line-height:1.55;color:#294653;word-break:break-all;">${safeInviteLink}</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:18px 30px;background:#f8fbf9;border-top:1px solid #dce8e1;">
+                                    <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7f76;">This invitation was sent by Tia. Do not share this email with anyone.</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+    `;
+}
+
+async function inviteAuthUser({ email, fullName, metadata, redirectTo, organizationName }) {
+    if (resend) {
+        const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+            type: "invite",
+            email,
+            options: {
+                data: metadata,
+                redirectTo
+            }
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        const user = data?.user || data?.properties?.user;
+        const inviteLink = data?.properties?.action_link || data?.action_link || "";
+        if (!user?.id || !inviteLink) {
+            throw new Error("Unable to generate the user invitation link.");
+        }
+
+        const { error: emailError } = await resend.emails.send({
+            from: resendFromEmail,
+            to: [email],
+            subject: "Create your Tia password",
+            text: [
+                `Hello ${fullName || "there"},`,
+                "",
+                `An administrator invited you to ${organizationName || "Tia"} on Tia.`,
+                "Create your password using this link:",
+                inviteLink
+            ].join("\n"),
+            html: renderInviteEmail({ fullName, organizationName, inviteLink })
+        });
+
+        if (emailError) {
+            throw new Error(emailError.message || "Unable to send the invitation email.");
+        }
+
+        return user;
+    }
+
+    const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        data: metadata,
+        redirectTo
+    });
+
+    if (error) {
+        throw error;
+    }
+
+    if (!data?.user?.id) {
+        throw new Error("Unable to create the invited user.");
+    }
+
+    return data.user;
+}
+
+async function saveInvitedUserAccess({ userId, fullName, email, type, role, businessId, branchId, isActive }) {
+    const { error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .upsert({
+            id: userId,
+            full_name: fullName,
+            email
+        }, { onConflict: "id" });
+
+    if (profileError) {
+        throw profileError;
+    }
+
+    if (type === "platform" && role === "super_admin") {
+        const { error } = await supabaseAdmin
+            .from("platform_admins")
+            .upsert({
+                user_id: userId,
+                role: "super_admin",
+                is_active: isActive
+            }, { onConflict: "user_id" });
+        if (error) {
+            throw error;
+        }
+        return;
+    }
+
+    if (type === "platform") {
+        await supabaseAdmin
+            .from("platform_admins")
+            .upsert({
+                user_id: userId,
+                role: "super_admin",
+                is_active: false
+            }, { onConflict: "user_id" });
+    }
+
+    const { error: memberError } = await supabaseAdmin
+        .from("business_members")
+        .upsert({
+            business_id: businessId,
+            user_id: userId,
+            role,
+            branch_id: branchId || null,
+            is_active: isActive
+        }, { onConflict: "business_id,user_id" });
+
+    if (memberError) {
+        throw memberError;
+    }
 }
 
 function canNotify(key) {
@@ -341,6 +633,136 @@ async function handleSecurityNotification(request, response) {
     sendJson(response, 200, { ok: true, id: data?.id || null });
 }
 
+async function handleUserInvite(request, response) {
+    if (request.method === "OPTIONS") {
+        sendJson(response, 204, {});
+        return;
+    }
+
+    if (request.method !== "POST") {
+        sendJson(response, 405, { error: "Method not allowed." });
+        return;
+    }
+
+    const authToken = getBearerToken(request);
+    const actor = await getAuthenticatedUser(authToken);
+    if (!actor?.id) {
+        sendJson(response, 401, { error: "Authentication is required." });
+        return;
+    }
+
+    let payload;
+    try {
+        payload = await readRequestJson(request);
+    } catch {
+        sendJson(response, 400, { error: "Invalid request payload." });
+        return;
+    }
+
+    const type = String(payload.type || "").trim().toLowerCase();
+    const fullName = String(payload.full_name || "").trim();
+    const email = String(payload.email || "").trim().toLowerCase();
+    const role = String(payload.role || "").trim().toLowerCase();
+    const isActive = payload.is_active !== false;
+    let businessId = String(payload.business_id || "").trim();
+    let branchId = String(payload.branch_id || "").trim();
+
+    if (!["platform", "organization"].includes(type)) {
+        sendJson(response, 400, { error: "Unsupported invite type." });
+        return;
+    }
+
+    if (!fullName || !email || !role) {
+        sendJson(response, 400, { error: "Full name, email, and role are required." });
+        return;
+    }
+
+    if (type === "platform" && !PLATFORM_USER_ROLES.has(role)) {
+        sendJson(response, 400, { error: "Select a valid platform role." });
+        return;
+    }
+
+    if (type === "organization" && !USER_INVITE_ROLES.has(role)) {
+        sendJson(response, 400, { error: "Select a valid organization role." });
+        return;
+    }
+
+    const access = await getActorAccess(actor.id);
+    if (type === "platform" && !access.isPlatformAdmin) {
+        sendJson(response, 403, { error: "Only Super Admin can create platform users." });
+        return;
+    }
+
+    if (type === "organization") {
+        const adminMembership = access.memberships.find((membership) =>
+            String(membership.role || "").toLowerCase() === "business_admin"
+                && (!businessId || String(membership.business_id) === businessId)
+        );
+
+        if (!adminMembership?.business_id) {
+            sendJson(response, 403, { error: "Only Admin can create organization users." });
+            return;
+        }
+
+        businessId = String(adminMembership.business_id);
+    }
+
+    if (type === "platform" && role !== "super_admin" && !businessId) {
+        sendJson(response, 400, { error: "Select an organization for this role." });
+        return;
+    }
+
+    if (role === "business_admin" && businessId) {
+        branchId = await ensureHeadOfficeBranch(businessId);
+    }
+
+    const organizationName = role === "super_admin"
+        ? "Tia Platform Workspace"
+        : await getBusinessName(businessId);
+    const redirectTo = getInviteRedirectUrl(request);
+    const metadata = {
+        full_name: fullName,
+        role,
+        platform_role: type === "platform" && role === "super_admin" ? "super_admin" : "",
+        business_id: businessId || "",
+        business_name: organizationName || "Tia Business Workspace",
+        subscription: "Live"
+    };
+
+    try {
+        const invitedUser = await inviteAuthUser({
+            email,
+            fullName,
+            metadata,
+            redirectTo,
+            organizationName
+        });
+
+        await saveInvitedUserAccess({
+            userId: invitedUser.id,
+            fullName,
+            email,
+            type,
+            role,
+            businessId,
+            branchId,
+            isActive
+        });
+
+        sendJson(response, 200, {
+            ok: true,
+            userId: invitedUser.id,
+            emailSent: true
+        });
+    } catch (error) {
+        console.error("[user-invite] Failed to invite user.", {
+            email,
+            message: error?.message || "Unknown error"
+        });
+        sendJson(response, 400, { error: error?.message || "Unable to invite user." });
+    }
+}
+
 async function serveStatic(request, response) {
     const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
     const pathname = decodeURIComponent(url.pathname);
@@ -370,6 +792,11 @@ const server = createServer(async (request, response) => {
 
         if (url.pathname === "/api/security-notification") {
             await handleSecurityNotification(request, response);
+            return;
+        }
+
+        if (url.pathname === "/api/users/invite") {
+            await handleUserInvite(request, response);
             return;
         }
 

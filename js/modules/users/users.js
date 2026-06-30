@@ -270,10 +270,6 @@ export async function renderUsers(context = {}) {
                                         <span>Email</span>
                                         <input name="email" type="email" placeholder="amina@tia.com" required>
                                     </label>
-                                    <label class="form-field">
-                                        <span>Password</span>
-                                        <input name="password" type="password" placeholder="Create a secure password" required>
-                                    </label>
                                 </div>
                                 <div class="triple-grid">
                                     <label class="form-field">
@@ -308,10 +304,10 @@ export async function renderUsers(context = {}) {
                                 </div>
                                 <div class="button-row">
                                     <button class="btn btn-primary" type="submit" data-platform-user-submit>
-                                        <span class="btn-label">Create User</span>
+                                        <span class="btn-label">Send Invite</span>
                                         <span class="spinner" aria-hidden="true"></span>
                                     </button>
-                                    <p class="muted" id="platformUserStatus">${context.platform ? "Fill in the user details to create the platform account." : "Fill in the user details to create the organization user."}</p>
+                                    <p class="muted" id="platformUserStatus">${context.platform ? "Fill in the user details to email a platform invite." : "Fill in the user details to email an organization invite."}</p>
                                 </div>
                             </form>
                         </div>
@@ -616,7 +612,7 @@ export async function renderUsers(context = {}) {
                 }
 
                 const data = new FormData(form);
-                status.textContent = context.platform ? "Creating platform user..." : "Creating organization user...";
+                status.textContent = context.platform ? "Sending platform invite..." : "Sending organization invite...";
                 setSubmittingState(submitButton, true);
                 showPageLoading();
 
@@ -632,7 +628,6 @@ export async function renderUsers(context = {}) {
                         await createPlatformUser({
                             full_name: String(data.get("full_name") || "").trim(),
                             email: String(data.get("email") || "").trim().toLowerCase(),
-                            password: String(data.get("password") || ""),
                             is_active: String(data.get("is_active") || "true").toLowerCase() === "true",
                             role: chosenRole,
                             business_id: chosenOrganizationId
@@ -641,7 +636,6 @@ export async function renderUsers(context = {}) {
                         await createOrganizationUser({
                             full_name: String(data.get("full_name") || "").trim(),
                             email: String(data.get("email") || "").trim().toLowerCase(),
-                            password: String(data.get("password") || ""),
                             is_active: String(data.get("is_active") || "true").toLowerCase() === "true",
                             role: chosenRole,
                             branch_id: String(data.get("branch_id") || "").trim()
@@ -651,7 +645,7 @@ export async function renderUsers(context = {}) {
                     form.reset();
                     syncOrganizationRequirement();
                     closeModal(modal);
-                    status.textContent = context.platform ? "Platform user created successfully." : "Organization user created successfully.";
+                    status.textContent = context.platform ? "Platform invite sent. The user can create their password from the email." : "Organization invite sent. The user can create their password from the email.";
                     if (typeof refresh === "function") {
                         await refresh();
                     }

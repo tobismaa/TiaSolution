@@ -153,18 +153,62 @@ function resolveUserRole(platformRole, businessRole) {
     return normalizedPlatformRole || normalizedBusinessRole || "staff";
 }
 
-function getSignupClient() {
-    if (!window.supabase?.createClient) {
-        return null;
+const USER_INVITE_PATH = "/api/users/invite";
+
+function getApiBaseCandidates() {
+    const explicitBase = String(window.TIA_API_BASE_URL || window.TIA_SUPABASE_CONFIG?.apiBaseUrl || supabaseConfig.apiBaseUrl || "").trim();
+    const candidates = [];
+
+    if (explicitBase) {
+        candidates.push(explicitBase.replace(/\/$/, ""));
     }
 
-    return window.supabase.createClient(supabaseConfig.url, supabaseConfig.publishableKey, {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-            detectSessionInUrl: false
+    candidates.push("");
+
+    if (["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "8003") {
+        candidates.push("http://localhost:8003");
+    }
+
+    return [...new Set(candidates)];
+}
+
+async function inviteUserFromBackend(payload) {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        throw new Error("Supabase client is unavailable.");
+    }
+
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) {
+        throw new Error("Sign in again before creating users.");
+    }
+
+    let lastError = "Unable to invite user.";
+    for (const baseUrl of getApiBaseCandidates()) {
+        try {
+            const response = await fetch(`${baseUrl}${USER_INVITE_PATH}`, {
+                method: "POST",
+                headers: {
+                    "authorization": `Bearer ${token}`,
+                    "content-type": "application/json",
+                    "x-tia-auth": token
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const body = await response.json().catch(() => ({}));
+            if (response.ok) {
+                return body;
+            }
+
+            lastError = body?.error || `Invite request failed with ${response.status}.`;
+        } catch {
+            // Try the next backend URL candidate.
         }
-    });
+    }
+
+    throw new Error(lastError);
 }
 
 export async function getOrganizationsForUserOnboarding() {
@@ -409,13 +453,12 @@ export async function createOrganizationUser(payload) {
 
     const fullName = String(payload.full_name || "").trim();
     const email = String(payload.email || "").trim().toLowerCase();
-    const password = String(payload.password || "");
     const role = String(payload.role || "staff").trim().toLowerCase();
     const isActive = Boolean(payload.is_active);
     let branchId = String(payload.branch_id || "").trim();
     const allowedBusinessMemberRoles = new Set(["business_admin", "manager", "staff", "account", "auditor"]);
 
-    if (!fullName || !email || !password) {
+    if (!fullName || !email) {
         throw new Error("Please complete the required user fields.");
     }
 
@@ -427,80 +470,17 @@ export async function createOrganizationUser(payload) {
         branchId = await ensureHeadOfficeBranch(supabase, session.businessId);
     }
 
-    const signupClient = getSignupClient();
-    if (!signupClient) {
-        throw new Error("Supabase signup client is unavailable.");
-    }
-
-    const { data: signUpData, error: signUpError } = await signupClient.auth.signUp({
+    await inviteUserFromBackend({
+        type: "organization",
+        full_name: fullName,
         email,
-        password,
-        options: {
-            data: {
-                full_name: fullName,
-                role,
-                platform_role: "",
-                business_id: session.businessId,
-                business_name: session.businessName || "Organization Workspace",
-                subscription: "Live"
-            }
-        }
+        role,
+        is_active: isActive,
+        business_id: session.businessId,
+        branch_id: branchId
     });
 
-    if (signUpError) {
-        throw signUpError;
-    }
-
-    const userId = signUpData?.user?.id;
-    if (!userId) {
-        throw new Error("Unable to create the organization user login.");
-    }
-
-    let { error: memberError } = await supabase
-        .from("business_members")
-        .upsert({
-            business_id: session.businessId,
-            user_id: userId,
-            role,
-            is_active: isActive,
-            branch_id: branchId || null
-        }, {
-            onConflict: "business_id,user_id"
-        });
-
-    if (memberError && isMissingColumnError(memberError, "branch_id")) {
-        const fallback = await supabase
-            .from("business_members")
-            .upsert({
-                business_id: session.businessId,
-                user_id: userId,
-                role,
-                is_active: isActive
-            }, {
-                onConflict: "business_id,user_id"
-            });
-        memberError = fallback.error;
-    }
-
-    if (memberError) {
-        throw memberError;
-    }
-
-    const { error: profileUpsertError } = await supabase
-        .from("profiles")
-        .upsert({
-            id: userId,
-            full_name: fullName,
-            email
-        }, {
-            onConflict: "id"
-        });
-
-    if (profileUpsertError) {
-        throw profileUpsertError;
-    }
-
-    return true;
+    return { invited: true };
 }
 
 export async function getBusinessUserById(userId) {
@@ -712,111 +692,31 @@ export async function createPlatformUser(payload) {
 
     const fullName = String(payload.full_name || "").trim();
     const email = String(payload.email || "").trim().toLowerCase();
-    const password = String(payload.password || "");
     const isActive = Boolean(payload.is_active);
     const role = String(payload.role || "super_admin").trim() || "super_admin";
     const businessId = String(payload.business_id || "").trim();
     let branchId = String(payload.branch_id || "").trim();
 
-    if (!fullName || !email || !password) {
+    if (!fullName || !email) {
         throw new Error("Please complete the required user fields.");
     }
 
-    const signupClient = getSignupClient();
-    if (!signupClient) {
-        throw new Error("Supabase signup client is unavailable.");
+    const allowedBusinessMemberRoles = new Set(["business_admin", "manager", "staff", "account", "auditor"]);
+    if (businessId && allowedBusinessMemberRoles.has(role) && role === "business_admin") {
+        branchId = await ensureHeadOfficeBranch(supabase, businessId);
     }
 
-    const { data: signUpData, error: signUpError } = await signupClient.auth.signUp({
+    await inviteUserFromBackend({
+        type: "platform",
+        full_name: fullName,
         email,
-        password,
-        options: {
-            data: {
-                full_name: fullName,
-                role,
-                platform_role: role === "super_admin" ? "super_admin" : "",
-                subscription: "Live"
-            }
-        }
+        role,
+        is_active: isActive,
+        business_id: businessId,
+        branch_id: branchId
     });
 
-    if (signUpError) {
-        throw signUpError;
-    }
-
-    const userId = signUpData?.user?.id;
-    if (!userId) {
-        throw new Error("Unable to create the platform user login.");
-    }
-
-    if (role === "super_admin") {
-        const { error: platformAdminError } = await supabase
-            .from("platform_admins")
-            .upsert({
-                user_id: userId,
-                is_active: isActive,
-                role: "super_admin"
-            }, {
-                onConflict: "user_id"
-            });
-
-        if (platformAdminError) {
-            throw platformAdminError;
-        }
-    } else {
-        const { error: platformAdminError } = await supabase
-            .from("platform_admins")
-            .upsert({
-                user_id: userId,
-                is_active: false,
-                role: "super_admin"
-            }, {
-                onConflict: "user_id"
-            });
-
-        if (platformAdminError && !isPlatformRoleConstraintError(platformAdminError)) {
-            throw platformAdminError;
-        }
-    }
-
-    const allowedBusinessMemberRoles = new Set(["business_admin", "manager", "staff", "account", "auditor"]);
-    if (businessId && allowedBusinessMemberRoles.has(role)) {
-        if (role === "business_admin") {
-            branchId = await ensureHeadOfficeBranch(supabase, businessId);
-        }
-
-        let { error: memberError } = await supabase
-            .from("business_members")
-            .upsert({
-                business_id: businessId,
-                user_id: userId,
-                role,
-                is_active: isActive,
-                branch_id: branchId || null
-            }, {
-                onConflict: "business_id,user_id"
-            });
-
-        if (memberError && isMissingColumnError(memberError, "branch_id")) {
-            const fallback = await supabase
-                .from("business_members")
-                .upsert({
-                    business_id: businessId,
-                    user_id: userId,
-                    role,
-                    is_active: isActive
-                }, {
-                    onConflict: "business_id,user_id"
-                });
-            memberError = fallback.error;
-        }
-
-        if (memberError) {
-            throw memberError;
-        }
-    }
-
-    return true;
+    return { invited: true };
 }
 
 export async function getPlatformUserById(userId) {
