@@ -40,6 +40,30 @@ async function waitForInviteSession(supabase) {
     return null;
 }
 
+async function getInviteSession(supabase) {
+    const params = new URLSearchParams(window.location.search);
+    const tokenHash = params.get("token_hash");
+    const type = params.get("type") || "invite";
+
+    if (tokenHash) {
+        const { data, error } = await supabase.auth.verifyOtp({
+            type,
+            token_hash: tokenHash
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        if (data?.session) {
+            window.history.replaceState({}, "", window.location.pathname);
+            return data.session;
+        }
+    }
+
+    return waitForInviteSession(supabase);
+}
+
 export async function initSetPasswordPage() {
     const form = document.getElementById("passwordSetupForm");
     const status = document.getElementById("passwordSetupStatus");
@@ -53,7 +77,15 @@ export async function initSetPasswordPage() {
         return;
     }
 
-    const session = await waitForInviteSession(supabase);
+    let session = null;
+    try {
+        session = await getInviteSession(supabase);
+    } catch (error) {
+        status.textContent = "This invite link is invalid or expired.";
+        showError(errorNode, error?.message || "Ask your administrator to send a new invitation.");
+        return;
+    }
+
     if (!session) {
         status.textContent = "This invite link is invalid or expired.";
         showError(errorNode, "Ask your administrator to send a new invitation.");

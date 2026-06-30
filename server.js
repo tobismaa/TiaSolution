@@ -123,6 +123,16 @@ function getInviteRedirectUrl(request) {
     return `${baseUrl}/set-password.html`;
 }
 
+function buildDirectInviteLink(redirectTo, tokenHash, email) {
+    const url = new URL(redirectTo);
+    url.searchParams.set("type", "invite");
+    url.searchParams.set("token_hash", tokenHash);
+    if (email) {
+        url.searchParams.set("email", email);
+    }
+    return url.toString();
+}
+
 function decodeJwtPayload(token) {
     try {
         const payload = String(token || "").split(".")[1];
@@ -360,7 +370,11 @@ async function inviteAuthUser({ email, fullName, metadata, redirectTo, organizat
         }
 
         const user = data?.user || data?.properties?.user;
-        const inviteLink = data?.properties?.action_link || data?.action_link || "";
+        const tokenHash = data?.properties?.hashed_token || data?.hashed_token || "";
+        const fallbackActionLink = data?.properties?.action_link || data?.action_link || "";
+        const inviteLink = tokenHash
+            ? buildDirectInviteLink(redirectTo, tokenHash, email)
+            : fallbackActionLink;
         if (!user?.id || !inviteLink) {
             throw new Error("Unable to generate the user invitation link.");
         }
