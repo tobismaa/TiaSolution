@@ -362,7 +362,7 @@ export async function initLoginPage() {
     const errorBanner = document.getElementById("authErrorBanner");
     const submitButton = loginForm?.querySelector("[data-login-submit]");
     const emailInput = loginForm?.querySelector('input[name="email"]');
-    const passwordInput = loginForm?.querySelector('input[name="password"]');
+    const passwordInput = loginForm?.querySelector("[data-login-password]");
 
     clearStoredSession();
     if (emailInput) {
@@ -400,8 +400,9 @@ export async function initLoginPage() {
 
         try {
             const email = String(form.get("email") || "").trim().toLowerCase();
+            const password = String(passwordInput?.value || "");
             window.localStorage.setItem(REMEMBERED_LOGIN_EMAIL_KEY, email);
-            await signInWithPassword(email, String(form.get("password") || ""));
+            await signInWithPassword(email, password);
             const session = await getCurrentSessionContext();
             window.location.href = getDashboardUrl(session);
         } catch (error) {

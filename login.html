@@ -40,14 +40,14 @@
             </div>
             <p class="muted" id="authStatus">Use your business account to access the workspace.</p>
             <div class="auth-error-banner" id="authErrorBanner" hidden tabindex="-1" role="alert" aria-live="assertive"></div>
-            <form id="loginForm" class="form-grid">
+            <form id="loginForm" class="form-grid" autocomplete="off">
                 <label class="form-field">
                     <span>Email</span>
                     <input id="email" name="email" type="email" placeholder="name@company.com" autocomplete="username email" required>
                 </label>
                 <label class="form-field">
                     <span>Password</span>
-                    <input id="password" name="password" type="password" placeholder="Enter password" autocomplete="new-password" data-lpignore="true" data-1p-ignore required>
+                    <input id="password" type="password" placeholder="Enter password" autocomplete="off" data-login-password data-lpignore="true" data-1p-ignore data-form-type="other" required>
                 </label>
                 <div class="button-row">
                     <button class="btn btn-primary" type="submit" data-login-submit>
