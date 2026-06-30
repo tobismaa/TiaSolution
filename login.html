@@ -43,11 +43,11 @@
             <form id="loginForm" class="form-grid">
                 <label class="form-field">
                     <span>Email</span>
-                    <input id="email" name="email" type="email" placeholder="name@company.com" required>
+                    <input id="email" name="email" type="email" placeholder="name@company.com" autocomplete="username email" required>
                 </label>
                 <label class="form-field">
                     <span>Password</span>
-                    <input id="password" name="password" type="password" placeholder="Enter password" required>
+                    <input id="password" name="password" type="password" placeholder="Enter password" autocomplete="new-password" data-lpignore="true" data-1p-ignore required>
                 </label>
                 <div class="button-row">
                     <button class="btn btn-primary" type="submit" data-login-submit>

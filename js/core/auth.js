@@ -6,6 +6,7 @@ import { showAlertModal } from "../shared/modal.js";
 import { sendSecurityNotification } from "./security-notifications.js";
 
 const LOGIN_SESSION_KEY = "tia_login_session_key";
+const REMEMBERED_LOGIN_EMAIL_KEY = "tia_login_email";
 let sessionTimeoutMonitorStarted = false;
 
 function setSubmittingState(button, isSubmitting) {
@@ -360,8 +361,13 @@ export async function initLoginPage() {
     const status = document.getElementById("authStatus");
     const errorBanner = document.getElementById("authErrorBanner");
     const submitButton = loginForm?.querySelector("[data-login-submit]");
+    const emailInput = loginForm?.querySelector('input[name="email"]');
+    const passwordInput = loginForm?.querySelector('input[name="password"]');
 
     clearStoredSession();
+    if (emailInput) {
+        emailInput.value = window.localStorage.getItem(REMEMBERED_LOGIN_EMAIL_KEY) || "";
+    }
 
     const supabase = getSupabaseClient();
     if (supabase) {
@@ -393,13 +399,18 @@ export async function initLoginPage() {
         showLoginLoading();
 
         try {
-            await signInWithPassword(String(form.get("email") || ""), String(form.get("password") || ""));
+            const email = String(form.get("email") || "").trim().toLowerCase();
+            window.localStorage.setItem(REMEMBERED_LOGIN_EMAIL_KEY, email);
+            await signInWithPassword(email, String(form.get("password") || ""));
             const session = await getCurrentSessionContext();
             window.location.href = getDashboardUrl(session);
         } catch (error) {
             const message = error?.message || "Unable to sign in.";
             status.textContent = message;
             showLoginError(errorBanner, message);
+            if (passwordInput) {
+                passwordInput.value = "";
+            }
             setSubmittingState(submitButton, false);
             hideLoginLoading();
         }
