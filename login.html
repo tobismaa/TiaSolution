@@ -56,19 +56,6 @@
                     </button>
                 </div>
             </form>
-            <form id="twoFactorForm" class="form-grid" hidden>
-                <label class="form-field">
-                    <span>Email Verification Code</span>
-                    <input name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code" required>
-                </label>
-                <div class="button-row">
-                    <button class="btn btn-primary" type="submit" data-two-factor-submit>
-                        <span class="btn-label">Verify Code</span>
-                        <span class="spinner" aria-hidden="true"></span>
-                    </button>
-                </div>
-            </form>
-
             <div class="auth-divider">
                 <span>Need demo access?</span>
             </div>
@@ -83,6 +70,33 @@
             </div>
         </section>
     </main>
+
+    <div class="business-modal tia-alert-modal" id="twoFactorModal" hidden aria-hidden="true">
+        <div class="business-modal__backdrop" aria-hidden="true"></div>
+        <div class="business-modal__dialog tia-alert-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="twoFactorTitle">
+            <div class="business-modal__head tia-alert-modal__head">
+                <div>
+                    <p class="tia-alert-modal__eyebrow">Verify login</p>
+                    <h2 id="twoFactorTitle">Email verification required</h2>
+                </div>
+            </div>
+            <div class="tia-alert-modal__body">
+                <p id="twoFactorMessage">Enter the 6-digit code sent to your email to continue.</p>
+                <form id="twoFactorForm" class="form-grid">
+                    <label class="form-field">
+                        <span>Email Verification Code</span>
+                        <input name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code" required>
+                    </label>
+                    <div class="button-row tia-alert-modal__actions">
+                        <button class="btn btn-primary" type="submit" data-two-factor-submit>
+                            <span class="btn-label">Verify Code</span>
+                            <span class="spinner" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <div class="page-loading-overlay" id="pageLoadingOverlay" hidden aria-hidden="true">
         <div class="page-loading-dialog" role="status" aria-live="polite">

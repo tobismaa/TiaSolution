@@ -7,6 +7,7 @@ import { sendSecurityNotification } from "./security-notifications.js";
 
 const LOGIN_SESSION_KEY = "tia_login_session_key";
 const REMEMBERED_LOGIN_EMAIL_KEY = "tia_login_identifier";
+const PENDING_TWO_FACTOR_KEY = "tia_pending_email_2fa";
 let sessionTimeoutMonitorStarted = false;
 
 function getApiBaseCandidates() {
@@ -106,6 +107,19 @@ function clearLoginSessionKey() {
     window.localStorage.removeItem(LOGIN_SESSION_KEY);
 }
 
+function isTwoFactorPending() {
+    return window.localStorage.getItem(PENDING_TWO_FACTOR_KEY) === "true";
+}
+
+function setTwoFactorPending(isPending) {
+    if (isPending) {
+        window.localStorage.setItem(PENDING_TWO_FACTOR_KEY, "true");
+        return;
+    }
+
+    window.localStorage.removeItem(PENDING_TWO_FACTOR_KEY);
+}
+
 function getDashboardUrl(session) {
     if (session?.role === ROLES.SUPER_ADMIN && session?.mode === "live") {
         return "./super-admin.html";
@@ -147,6 +161,7 @@ async function forceLocalSignOut(message, options = {}) {
 
     clearStoredSession();
     clearLoginSessionKey();
+    setTwoFactorPending(false);
 
     showAlertModal(message || "Your session has ended. Please sign in again.", {
         title: options.title || "Session ended",
@@ -324,6 +339,11 @@ export function startLoginAttemptMonitor() {
 }
 
 export async function ensureLoginSessionClaimed() {
+    if (isTwoFactorPending()) {
+        window.location.href = "./login.html";
+        return false;
+    }
+
     try {
         await claimLoginSession();
         return true;
@@ -334,6 +354,7 @@ export async function ensureLoginSessionClaimed() {
         }
         clearStoredSession();
         clearLoginSessionKey();
+        setTwoFactorPending(false);
         window.alert(error?.message || "This user is already signed in elsewhere.");
         window.location.href = "./login.html";
         return false;
@@ -400,7 +421,9 @@ async function verifyTwoFactorCode(code) {
         throw new Error("Sign in again before verifying 2FA.");
     }
 
-    return postJsonToApi("/api/auth/verify-2fa", { code }, token);
+    const result = await postJsonToApi("/api/auth/verify-2fa", { code }, token);
+    setTwoFactorPending(false);
+    return result;
 }
 
 export async function signUpWithPassword(email, password, profileData = {}) {
@@ -430,6 +453,7 @@ export async function signUpWithPassword(email, password, profileData = {}) {
 
 export async function signOutUser() {
     clearStoredSession();
+    setTwoFactorPending(false);
     const supabase = getSupabaseClient();
     if (supabase) {
         await releaseLoginSession();
@@ -442,13 +466,33 @@ export async function signOutUser() {
 
 export async function initLoginPage() {
     const loginForm = document.getElementById("loginForm");
+    const twoFactorModal = document.getElementById("twoFactorModal");
     const twoFactorForm = document.getElementById("twoFactorForm");
+    const twoFactorMessage = document.getElementById("twoFactorMessage");
     const status = document.getElementById("authStatus");
     const errorBanner = document.getElementById("authErrorBanner");
     const submitButton = loginForm?.querySelector("[data-login-submit]");
     const twoFactorSubmitButton = twoFactorForm?.querySelector("[data-two-factor-submit]");
     const loginInput = loginForm?.querySelector('input[name="login"]');
     const passwordInput = loginForm?.querySelector("[data-login-password]");
+    const twoFactorCodeInput = twoFactorForm?.querySelector('input[name="code"]');
+
+    const showTwoFactorModal = () => {
+        if (!twoFactorModal) {
+            return;
+        }
+        twoFactorModal.hidden = false;
+        twoFactorModal.setAttribute("aria-hidden", "false");
+        twoFactorCodeInput?.focus();
+    };
+
+    const hideTwoFactorModal = () => {
+        if (!twoFactorModal) {
+            return;
+        }
+        twoFactorModal.hidden = true;
+        twoFactorModal.setAttribute("aria-hidden", "true");
+    };
 
     clearStoredSession();
     if (loginInput) {
@@ -461,6 +505,15 @@ export async function initLoginPage() {
         try {
             const { data } = await supabase.auth.getSession();
             if (data.session) {
+                if (isTwoFactorPending()) {
+                    status.textContent = "Verification code required to continue.";
+                    if (twoFactorMessage) {
+                        twoFactorMessage.textContent = "Enter the 6-digit code sent to your email to continue.";
+                    }
+                    showTwoFactorModal();
+                    return;
+                }
+
                 const isAllowed = await ensureLoginSessionClaimed();
                 if (!isAllowed) {
                     return;
@@ -492,16 +545,24 @@ export async function initLoginPage() {
             await signInWithPassword(email, password);
             const securityCheck = await runPostLoginSecurityCheck();
             if (securityCheck?.requiresTwoFactor) {
-                status.textContent = "Enter the verification code sent to your email.";
-                loginForm.hidden = true;
-                if (twoFactorForm) {
-                    twoFactorForm.hidden = false;
-                    twoFactorForm.querySelector('input[name="code"]')?.focus();
+                setTwoFactorPending(true);
+                status.textContent = "Verification code sent. Complete the popup to continue.";
+                if (twoFactorMessage) {
+                    twoFactorMessage.textContent = "Enter the 6-digit code sent to your email to continue.";
                 }
+                if (twoFactorCodeInput) {
+                    twoFactorCodeInput.value = "";
+                }
+                if (passwordInput) {
+                    passwordInput.value = "";
+                }
+                showTwoFactorModal();
                 setSubmittingState(submitButton, false);
                 hideLoginLoading();
                 return;
             }
+
+            setTwoFactorPending(false);
             const session = await getCurrentSessionContext();
             window.location.href = getDashboardUrl(session);
         } catch (error) {
@@ -527,11 +588,15 @@ export async function initLoginPage() {
 
         try {
             await verifyTwoFactorCode(code);
+            hideTwoFactorModal();
             const session = await getCurrentSessionContext();
             window.location.href = getDashboardUrl(session);
         } catch (error) {
             const message = error?.message || "Unable to verify code.";
             status.textContent = message;
+            if (twoFactorMessage) {
+                twoFactorMessage.textContent = message;
+            }
             showLoginError(errorBanner, message);
             setSubmittingState(twoFactorSubmitButton, false);
             hideLoginLoading();
