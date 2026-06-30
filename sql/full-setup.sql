@@ -31,9 +31,26 @@ create table if not exists public.profiles (
     id uuid primary key references auth.users(id) on delete cascade,
     full_name text,
     email text,
+    username text,
     phone text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
+);
+
+create table if not exists public.user_security_states (
+    user_id uuid primary key references auth.users(id) on delete cascade,
+    successful_login_count integer not null default 0,
+    last_2fa_verified_at timestamptz,
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists public.user_two_factor_challenges (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    code_hash text not null,
+    expires_at timestamptz not null,
+    consumed_at timestamptz,
+    created_at timestamptz not null default now()
 );
 
 create table if not exists public.platform_admins (
@@ -76,6 +93,11 @@ update public.user_login_sessions sessions
 create unique index if not exists user_login_sessions_one_active_per_user
 on public.user_login_sessions (user_id)
 where is_active = true;
+create unique index if not exists profiles_username_unique_idx
+on public.profiles (lower(username))
+where username is not null;
+create index if not exists user_two_factor_challenges_user_created_idx
+on public.user_two_factor_challenges (user_id, created_at desc);
 
 create table if not exists public.demo_requests (
     id uuid primary key default gen_random_uuid(),
@@ -484,6 +506,8 @@ create index if not exists idx_audit_logs_business_id_created_at on public.audit
 
 alter table public.businesses enable row level security;
 alter table public.profiles enable row level security;
+alter table public.user_security_states enable row level security;
+alter table public.user_two_factor_challenges enable row level security;
 alter table public.platform_admins enable row level security;
 alter table public.user_login_sessions enable row level security;
 alter table public.demo_requests enable row level security;
@@ -809,6 +833,22 @@ create policy "users can view their login sessions"
 on public.user_login_sessions for select
 using (user_id = auth.uid());
 
+drop policy if exists "users view their security state" on public.user_security_states;
+create policy "users view their security state"
+on public.user_security_states for select
+using (user_id = auth.uid() or public.is_platform_admin());
+
+drop policy if exists "platform admins manage security state" on public.user_security_states;
+create policy "platform admins manage security state"
+on public.user_security_states for all
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
+
+drop policy if exists "platform admins view two factor challenges" on public.user_two_factor_challenges;
+create policy "platform admins view two factor challenges"
+on public.user_two_factor_challenges for select
+using (public.is_platform_admin());
+
 drop policy if exists "platform admins view login sessions" on public.user_login_sessions;
 create policy "platform admins view login sessions"
 on public.user_login_sessions for select
@@ -1081,6 +1121,10 @@ grant execute on function public.force_end_login_session(uuid) to authenticated;
 
 insert into public.platform_settings (key, value)
 values ('session_timeout_minutes', '30')
+on conflict (key) do nothing;
+
+insert into public.platform_settings (key, value)
+values ('email_2fa_after_logins', '10')
 on conflict (key) do nothing;
 
 commit;

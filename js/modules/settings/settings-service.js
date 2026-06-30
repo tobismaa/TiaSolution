@@ -85,6 +85,52 @@ export async function saveSessionTimeoutMinutes(minutes) {
     return Math.round(normalized);
 }
 
+export async function getEmailTwoFactorLoginThreshold() {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        return 10;
+    }
+
+    const { data, error } = await supabase
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "email_2fa_after_logins")
+        .maybeSingle();
+
+    if (error) {
+        return 10;
+    }
+
+    const value = Number(data?.value || 10);
+    return Number.isFinite(value) && value > 0 ? Math.round(value) : 10;
+}
+
+export async function saveEmailTwoFactorLoginThreshold(threshold) {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        throw new Error("Supabase client is unavailable.");
+    }
+
+    const normalized = Number(threshold || 0);
+    if (!Number.isFinite(normalized) || normalized < 1 || normalized > 1000) {
+        throw new Error("2FA login threshold must be between 1 and 1000.");
+    }
+
+    const { error } = await supabase
+        .from("platform_settings")
+        .upsert({
+            key: "email_2fa_after_logins",
+            value: String(Math.round(normalized)),
+            updated_at: new Date().toISOString()
+        }, { onConflict: "key" });
+
+    if (error) {
+        throw new Error("Unable to save 2FA policy. Run sql/add-username-and-email-2fa.sql.");
+    }
+
+    return Math.round(normalized);
+}
+
 export async function getActiveLoginSessions() {
     const supabase = getSupabaseClient();
     if (!supabase) {

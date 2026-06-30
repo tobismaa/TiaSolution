@@ -270,6 +270,10 @@ export async function renderUsers(context = {}) {
                                         <span>Email</span>
                                         <input name="email" type="email" placeholder="amina@tia.com" required>
                                     </label>
+                                    <label class="form-field">
+                                        <span>Username</span>
+                                        <input name="username" type="text" placeholder="amina.yusuf" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+                                    </label>
                                 </div>
                                 <div class="triple-grid">
                                     <label class="form-field">
@@ -628,6 +632,7 @@ export async function renderUsers(context = {}) {
                         await createPlatformUser({
                             full_name: String(data.get("full_name") || "").trim(),
                             email: String(data.get("email") || "").trim().toLowerCase(),
+                            username: String(data.get("username") || "").trim().toLowerCase(),
                             is_active: String(data.get("is_active") || "true").toLowerCase() === "true",
                             role: chosenRole,
                             business_id: chosenOrganizationId
@@ -636,6 +641,7 @@ export async function renderUsers(context = {}) {
                         await createOrganizationUser({
                             full_name: String(data.get("full_name") || "").trim(),
                             email: String(data.get("email") || "").trim().toLowerCase(),
+                            username: String(data.get("username") || "").trim().toLowerCase(),
                             is_active: String(data.get("is_active") || "true").toLowerCase() === "true",
                             role: chosenRole,
                             branch_id: String(data.get("branch_id") || "").trim()

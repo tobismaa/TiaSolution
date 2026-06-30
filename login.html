@@ -42,8 +42,8 @@
             <div class="auth-error-banner" id="authErrorBanner" hidden tabindex="-1" role="alert" aria-live="assertive"></div>
             <form id="loginForm" class="form-grid" autocomplete="off">
                 <label class="form-field">
-                    <span>Email</span>
-                    <input id="email" name="email" type="email" placeholder="name@company.com" autocomplete="username email" required>
+                    <span>Username</span>
+                    <input id="loginIdentifier" name="login" type="text" placeholder="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
                 </label>
                 <label class="form-field">
                     <span>Password</span>
@@ -52,6 +52,18 @@
                 <div class="button-row">
                     <button class="btn btn-primary" type="submit" data-login-submit>
                         <span class="btn-label">Sign In</span>
+                        <span class="spinner" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+            <form id="twoFactorForm" class="form-grid" hidden>
+                <label class="form-field">
+                    <span>Email Verification Code</span>
+                    <input name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="6-digit code" autocomplete="one-time-code" required>
+                </label>
+                <div class="button-row">
+                    <button class="btn btn-primary" type="submit" data-two-factor-submit>
+                        <span class="btn-label">Verify Code</span>
                         <span class="spinner" aria-hidden="true"></span>
                     </button>
                 </div>

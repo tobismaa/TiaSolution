@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash, randomInt } from "node:crypto";
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
 
@@ -131,6 +132,110 @@ function buildDirectInviteLink(redirectTo, tokenHash, email) {
         url.searchParams.set("email", email);
     }
     return url.toString();
+}
+
+function hashSecurityCode(code) {
+    return createHash("sha256").update(String(code || "")).digest("hex");
+}
+
+function generateTwoFactorCode() {
+    return String(randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
+async function getEmailTwoFactorThreshold() {
+    const { data } = await supabaseAdmin
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "email_2fa_after_logins")
+        .maybeSingle();
+
+    const threshold = Number(data?.value || 10);
+    if (!Number.isFinite(threshold) || threshold < 1) {
+        return 10;
+    }
+
+    return Math.min(Math.round(threshold), 1000);
+}
+
+function renderTwoFactorEmail({ fullName, code }) {
+    const safeName = escapeHtml(fullName || "there");
+    const safeCode = escapeHtml(code);
+    return `
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>Tia verification code</title>
+        </head>
+        <body style="margin:0;padding:0;background:#f3f7f5;font-family:Arial,Helvetica,sans-serif;color:#17313e;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f7f5;margin:0;padding:28px 12px;">
+                <tr>
+                    <td align="center">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #dce8e1;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(23,49,62,0.10);">
+                            <tr>
+                                <td style="background:#0f5f3f;padding:26px 30px;color:#ffffff;">
+                                    <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#bcebd2;">Tia Security</div>
+                                    <h1 style="margin:8px 0 0;font-size:25px;line-height:1.2;font-weight:800;color:#ffffff;">Verification required</h1>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:30px;">
+                                    <p style="margin:0 0 16px;font-size:16px;line-height:1.55;color:#294653;">Hello ${safeName},</p>
+                                    <p style="margin:0 0 20px;font-size:16px;line-height:1.55;color:#294653;">Use this code to complete your Tia login.</p>
+                                    <div style="font-size:34px;letter-spacing:0.18em;font-weight:900;color:#0f5f3f;background:#edf8f2;border:1px solid #ccebdd;border-radius:14px;padding:18px 20px;text-align:center;">${safeCode}</div>
+                                    <p style="margin:18px 0 0;font-size:13px;line-height:1.55;color:#6b7f76;">This code expires in 10 minutes. If you did not try to sign in, contact your administrator.</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+    `;
+}
+
+async function sendTwoFactorCode(user) {
+    if (!resend) {
+        throw new Error("Email 2FA requires Resend. Set RESEND_API_KEY.");
+    }
+
+    const code = generateTwoFactorCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+    await supabaseAdmin
+        .from("user_two_factor_challenges")
+        .update({ consumed_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .is("consumed_at", null);
+
+    const { error: insertError } = await supabaseAdmin
+        .from("user_two_factor_challenges")
+        .insert({
+            user_id: user.id,
+            code_hash: hashSecurityCode(code),
+            expires_at: expiresAt
+        });
+
+    if (insertError) {
+        throw insertError;
+    }
+
+    const { error: emailError } = await resend.emails.send({
+        from: resendFromEmail,
+        to: [user.email],
+        subject: "Your Tia verification code",
+        text: `Your Tia verification code is ${code}. It expires in 10 minutes.`,
+        html: renderTwoFactorEmail({
+            fullName: user.user_metadata?.full_name || user.email,
+            code
+        })
+    });
+
+    if (emailError) {
+        throw new Error(emailError.message || "Unable to send 2FA email.");
+    }
 }
 
 function decodeJwtPayload(token) {
@@ -416,13 +521,14 @@ async function inviteAuthUser({ email, fullName, metadata, redirectTo, organizat
     return data.user;
 }
 
-async function saveInvitedUserAccess({ userId, fullName, email, type, role, businessId, branchId, isActive }) {
+async function saveInvitedUserAccess({ userId, fullName, email, username, type, role, businessId, branchId, isActive }) {
     const { error: profileError } = await supabaseAdmin
         .from("profiles")
         .upsert({
             id: userId,
             full_name: fullName,
-            email
+            email,
+            username
         }, { onConflict: "id" });
 
     if (profileError) {
@@ -676,6 +782,7 @@ async function handleUserInvite(request, response) {
     const type = String(payload.type || "").trim().toLowerCase();
     const fullName = String(payload.full_name || "").trim();
     const email = String(payload.email || "").trim().toLowerCase();
+    const username = String(payload.username || "").trim().toLowerCase();
     const role = String(payload.role || "").trim().toLowerCase();
     const isActive = payload.is_active !== false;
     let businessId = String(payload.business_id || "").trim();
@@ -686,8 +793,24 @@ async function handleUserInvite(request, response) {
         return;
     }
 
-    if (!fullName || !email || !role) {
-        sendJson(response, 400, { error: "Full name, email, and role are required." });
+    if (!fullName || !email || !username || !role) {
+        sendJson(response, 400, { error: "Full name, email, username, and role are required." });
+        return;
+    }
+
+    if (!/^[a-z0-9._-]{3,40}$/.test(username)) {
+        sendJson(response, 400, { error: "Username must be 3-40 characters using letters, numbers, dot, dash, or underscore." });
+        return;
+    }
+
+    const { data: existingUsername } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .ilike("username", username)
+        .maybeSingle();
+
+    if (existingUsername?.id) {
+        sendJson(response, 409, { error: "Username is already taken." });
         return;
     }
 
@@ -740,6 +863,7 @@ async function handleUserInvite(request, response) {
         platform_role: type === "platform" && role === "super_admin" ? "super_admin" : "",
         business_id: businessId || "",
         business_name: organizationName || "Tia Business Workspace",
+        username,
         subscription: "Live"
     };
 
@@ -756,6 +880,7 @@ async function handleUserInvite(request, response) {
             userId: invitedUser.id,
             fullName,
             email,
+            username,
             type,
             role,
             businessId,
@@ -775,6 +900,179 @@ async function handleUserInvite(request, response) {
         });
         sendJson(response, 400, { error: error?.message || "Unable to invite user." });
     }
+}
+
+async function handleResolveLogin(request, response) {
+    if (request.method === "OPTIONS") {
+        sendJson(response, 204, {});
+        return;
+    }
+
+    if (request.method !== "POST") {
+        sendJson(response, 405, { error: "Method not allowed." });
+        return;
+    }
+
+    let payload;
+    try {
+        payload = await readRequestJson(request);
+    } catch {
+        sendJson(response, 400, { error: "Invalid request payload." });
+        return;
+    }
+
+    const login = String(payload.login || "").trim().toLowerCase();
+    if (!login) {
+        sendJson(response, 400, { error: "Username is required." });
+        return;
+    }
+
+    if (login.includes("@")) {
+        sendJson(response, 200, { email: login });
+        return;
+    }
+
+    const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("email")
+        .ilike("username", login)
+        .maybeSingle();
+
+    if (error || !data?.email) {
+        sendJson(response, 404, { error: "Username was not found." });
+        return;
+    }
+
+    sendJson(response, 200, { email: data.email });
+}
+
+async function handlePostLogin(request, response) {
+    if (request.method === "OPTIONS") {
+        sendJson(response, 204, {});
+        return;
+    }
+
+    if (request.method !== "POST") {
+        sendJson(response, 405, { error: "Method not allowed." });
+        return;
+    }
+
+    const user = await getAuthenticatedUser(getBearerToken(request));
+    if (!user?.id || !user?.email) {
+        sendJson(response, 401, { error: "Authentication is required." });
+        return;
+    }
+
+    try {
+        const threshold = await getEmailTwoFactorThreshold();
+        const { data: currentState } = await supabaseAdmin
+            .from("user_security_states")
+            .select("successful_login_count")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+        const nextCount = Number(currentState?.successful_login_count || 0) + 1;
+        const requiresTwoFactor = nextCount >= threshold;
+
+        const { error: stateError } = await supabaseAdmin
+            .from("user_security_states")
+            .upsert({
+                user_id: user.id,
+                successful_login_count: nextCount,
+                updated_at: new Date().toISOString()
+            }, { onConflict: "user_id" });
+
+        if (stateError) {
+            throw stateError;
+        }
+
+        if (requiresTwoFactor) {
+            await sendTwoFactorCode(user);
+        }
+
+        sendJson(response, 200, {
+            ok: true,
+            requiresTwoFactor,
+            threshold,
+            loginCount: nextCount
+        });
+    } catch (error) {
+        console.error("[auth-post-login] Failed.", { message: error?.message || "Unknown error" });
+        sendJson(response, 400, { error: error?.message || "Unable to complete login security check." });
+    }
+}
+
+async function handleVerifyTwoFactor(request, response) {
+    if (request.method === "OPTIONS") {
+        sendJson(response, 204, {});
+        return;
+    }
+
+    if (request.method !== "POST") {
+        sendJson(response, 405, { error: "Method not allowed." });
+        return;
+    }
+
+    const user = await getAuthenticatedUser(getBearerToken(request));
+    if (!user?.id) {
+        sendJson(response, 401, { error: "Authentication is required." });
+        return;
+    }
+
+    let payload;
+    try {
+        payload = await readRequestJson(request);
+    } catch {
+        sendJson(response, 400, { error: "Invalid request payload." });
+        return;
+    }
+
+    const code = String(payload.code || "").replace(/\D/g, "");
+    if (code.length !== 6) {
+        sendJson(response, 400, { error: "Enter the 6-digit verification code." });
+        return;
+    }
+
+    const { data: challenge, error } = await supabaseAdmin
+        .from("user_two_factor_challenges")
+        .select("id, code_hash, expires_at, consumed_at")
+        .eq("user_id", user.id)
+        .is("consumed_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error || !challenge?.id) {
+        sendJson(response, 400, { error: "No active verification code found." });
+        return;
+    }
+
+    if (new Date(challenge.expires_at).getTime() < Date.now()) {
+        sendJson(response, 400, { error: "Verification code has expired. Sign in again." });
+        return;
+    }
+
+    if (challenge.code_hash !== hashSecurityCode(code)) {
+        sendJson(response, 400, { error: "Verification code is incorrect." });
+        return;
+    }
+
+    const nowIso = new Date().toISOString();
+    await supabaseAdmin
+        .from("user_two_factor_challenges")
+        .update({ consumed_at: nowIso })
+        .eq("id", challenge.id);
+
+    await supabaseAdmin
+        .from("user_security_states")
+        .upsert({
+            user_id: user.id,
+            successful_login_count: 0,
+            last_2fa_verified_at: nowIso,
+            updated_at: nowIso
+        }, { onConflict: "user_id" });
+
+    sendJson(response, 200, { ok: true });
 }
 
 async function serveStatic(request, response) {
@@ -811,6 +1109,21 @@ const server = createServer(async (request, response) => {
 
         if (url.pathname === "/api/users/invite") {
             await handleUserInvite(request, response);
+            return;
+        }
+
+        if (url.pathname === "/api/auth/resolve-login") {
+            await handleResolveLogin(request, response);
+            return;
+        }
+
+        if (url.pathname === "/api/auth/post-login") {
+            await handlePostLogin(request, response);
+            return;
+        }
+
+        if (url.pathname === "/api/auth/verify-2fa") {
+            await handleVerifyTwoFactor(request, response);
             return;
         }
 

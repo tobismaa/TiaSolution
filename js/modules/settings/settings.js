@@ -4,7 +4,9 @@ import { showToast } from "../../shared/toast.js";
 import {
     forceLogoutSession,
     getActiveLoginSessions,
+    getEmailTwoFactorLoginThreshold,
     getSessionTimeoutMinutes,
+    saveEmailTwoFactorLoginThreshold,
     saveSessionTimeoutMinutes
 } from "./settings-service.js";
 
@@ -113,7 +115,7 @@ function renderActiveSessions(sessions = []) {
     `;
 }
 
-function renderSuperAdminSettings(timeoutMinutes, sessions) {
+function renderSuperAdminSettings(timeoutMinutes, twoFactorThreshold, sessions) {
     return `
         <div class="section-stack">
             <div class="button-row demo-tabbar settings-subtabs" role="tablist" aria-label="Super admin settings">
@@ -133,6 +135,11 @@ function renderSuperAdminSettings(timeoutMinutes, sessions) {
                             <span>Idle Timeout Minutes</span>
                             <input name="session_timeout_minutes" type="number" min="5" max="720" step="1" value="${escapeHtml(timeoutMinutes)}" required>
                             <small>Users are signed out after this many idle minutes. Use 5 to 720 minutes.</small>
+                        </label>
+                        <label class="form-field">
+                            <span>Email 2FA After Logins</span>
+                            <input name="email_2fa_after_logins" type="number" min="1" max="1000" step="1" value="${escapeHtml(twoFactorThreshold)}" required>
+                            <small>After this many successful logins, the next login must be verified with an email code.</small>
                         </label>
                         <div class="button-row">
                             <button class="btn btn-primary" type="submit" data-session-timeout-save>
@@ -156,12 +163,13 @@ export async function renderSettings(session) {
         return renderManagedSettings();
     }
 
-    const [timeoutMinutes, sessions] = await Promise.all([
+    const [timeoutMinutes, twoFactorThreshold, sessions] = await Promise.all([
         getSessionTimeoutMinutes(),
+        getEmailTwoFactorLoginThreshold(),
         getActiveLoginSessions()
     ]);
 
-    return renderSuperAdminSettings(timeoutMinutes, sessions);
+    return renderSuperAdminSettings(timeoutMinutes, twoFactorThreshold, sessions);
 }
 
 export function bindSettingsActions(container, refresh) {
@@ -179,10 +187,13 @@ export function bindSettingsActions(container, refresh) {
         }
 
         try {
-            await saveSessionTimeoutMinutes(Number(data.get("session_timeout_minutes") || 0));
-            showToast("Session timeout saved.");
+            await Promise.all([
+                saveSessionTimeoutMinutes(Number(data.get("session_timeout_minutes") || 0)),
+                saveEmailTwoFactorLoginThreshold(Number(data.get("email_2fa_after_logins") || 0))
+            ]);
+            showToast("Security settings saved.");
             if (status) {
-                status.textContent = "Session timeout saved.";
+                status.textContent = "Security settings saved.";
             }
             if (typeof refresh === "function") {
                 await refresh();

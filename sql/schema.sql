@@ -22,9 +22,26 @@ create table if not exists public.profiles (
     id uuid primary key references auth.users(id) on delete cascade,
     full_name text,
     email text,
+    username text,
     phone text,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
+);
+
+create table if not exists public.user_security_states (
+    user_id uuid primary key references auth.users(id) on delete cascade,
+    successful_login_count integer not null default 0,
+    last_2fa_verified_at timestamptz,
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists public.user_two_factor_challenges (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    code_hash text not null,
+    expires_at timestamptz not null,
+    consumed_at timestamptz,
+    created_at timestamptz not null default now()
 );
 
 create table if not exists public.platform_admins (

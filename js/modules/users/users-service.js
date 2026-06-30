@@ -453,12 +453,13 @@ export async function createOrganizationUser(payload) {
 
     const fullName = String(payload.full_name || "").trim();
     const email = String(payload.email || "").trim().toLowerCase();
+    const username = String(payload.username || "").trim().toLowerCase();
     const role = String(payload.role || "staff").trim().toLowerCase();
     const isActive = Boolean(payload.is_active);
     let branchId = String(payload.branch_id || "").trim();
     const allowedBusinessMemberRoles = new Set(["business_admin", "manager", "staff", "account", "auditor"]);
 
-    if (!fullName || !email) {
+    if (!fullName || !email || !username) {
         throw new Error("Please complete the required user fields.");
     }
 
@@ -474,6 +475,7 @@ export async function createOrganizationUser(payload) {
         type: "organization",
         full_name: fullName,
         email,
+        username,
         role,
         is_active: isActive,
         business_id: session.businessId,
@@ -692,12 +694,13 @@ export async function createPlatformUser(payload) {
 
     const fullName = String(payload.full_name || "").trim();
     const email = String(payload.email || "").trim().toLowerCase();
+    const username = String(payload.username || "").trim().toLowerCase();
     const isActive = Boolean(payload.is_active);
     const role = String(payload.role || "super_admin").trim() || "super_admin";
     const businessId = String(payload.business_id || "").trim();
     let branchId = String(payload.branch_id || "").trim();
 
-    if (!fullName || !email) {
+    if (!fullName || !email || !username) {
         throw new Error("Please complete the required user fields.");
     }
 
@@ -710,6 +713,7 @@ export async function createPlatformUser(payload) {
         type: "platform",
         full_name: fullName,
         email,
+        username,
         role,
         is_active: isActive,
         business_id: businessId,

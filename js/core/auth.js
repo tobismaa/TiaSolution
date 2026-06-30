@@ -6,8 +6,49 @@ import { showAlertModal } from "../shared/modal.js";
 import { sendSecurityNotification } from "./security-notifications.js";
 
 const LOGIN_SESSION_KEY = "tia_login_session_key";
-const REMEMBERED_LOGIN_EMAIL_KEY = "tia_login_email";
+const REMEMBERED_LOGIN_EMAIL_KEY = "tia_login_identifier";
 let sessionTimeoutMonitorStarted = false;
+
+function getApiBaseCandidates() {
+    const explicitBase = String(window.TIA_API_BASE_URL || window.TIA_SUPABASE_CONFIG?.apiBaseUrl || "").trim();
+    const candidates = [];
+
+    if (explicitBase) {
+        candidates.push(explicitBase.replace(/\/$/, ""));
+    }
+
+    candidates.push("");
+
+    if (["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "8003") {
+        candidates.push("http://localhost:8003");
+    }
+
+    return [...new Set(candidates)];
+}
+
+async function postJsonToApi(path, payload = {}, token = "") {
+    let lastError = "Request failed.";
+    for (const baseUrl of getApiBaseCandidates()) {
+        try {
+            const response = await fetch(`${baseUrl}${path}`, {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json",
+                    ...(token ? { "authorization": `Bearer ${token}`, "x-tia-auth": token } : {})
+                },
+                body: JSON.stringify(payload)
+            });
+            const body = await response.json().catch(() => ({}));
+            if (response.ok) {
+                return body;
+            }
+            lastError = body?.error || `Request failed with ${response.status}.`;
+        } catch {
+            // Try next candidate.
+        }
+    }
+    throw new Error(lastError);
+}
 
 function setSubmittingState(button, isSubmitting) {
     if (!button) {
@@ -319,6 +360,49 @@ export async function signInWithPassword(email, password) {
     }
 }
 
+async function resolveLoginEmail(login) {
+    const normalizedLogin = String(login || "").trim().toLowerCase();
+    if (!normalizedLogin) {
+        throw new Error("Enter your username.");
+    }
+
+    const result = await postJsonToApi("/api/auth/resolve-login", { login: normalizedLogin });
+    if (!result?.email) {
+        throw new Error("Username was not found.");
+    }
+    return String(result.email || "").trim().toLowerCase();
+}
+
+async function runPostLoginSecurityCheck() {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        return { requiresTwoFactor: false };
+    }
+
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) {
+        return { requiresTwoFactor: false };
+    }
+
+    return postJsonToApi("/api/auth/post-login", {}, token);
+}
+
+async function verifyTwoFactorCode(code) {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        throw new Error("Supabase client is unavailable.");
+    }
+
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) {
+        throw new Error("Sign in again before verifying 2FA.");
+    }
+
+    return postJsonToApi("/api/auth/verify-2fa", { code }, token);
+}
+
 export async function signUpWithPassword(email, password, profileData = {}) {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -358,15 +442,17 @@ export async function signOutUser() {
 
 export async function initLoginPage() {
     const loginForm = document.getElementById("loginForm");
+    const twoFactorForm = document.getElementById("twoFactorForm");
     const status = document.getElementById("authStatus");
     const errorBanner = document.getElementById("authErrorBanner");
     const submitButton = loginForm?.querySelector("[data-login-submit]");
-    const emailInput = loginForm?.querySelector('input[name="email"]');
+    const twoFactorSubmitButton = twoFactorForm?.querySelector("[data-two-factor-submit]");
+    const loginInput = loginForm?.querySelector('input[name="login"]');
     const passwordInput = loginForm?.querySelector("[data-login-password]");
 
     clearStoredSession();
-    if (emailInput) {
-        emailInput.value = window.localStorage.getItem(REMEMBERED_LOGIN_EMAIL_KEY) || "";
+    if (loginInput) {
+        loginInput.value = window.localStorage.getItem(REMEMBERED_LOGIN_EMAIL_KEY) || "";
     }
 
     const supabase = getSupabaseClient();
@@ -399,10 +485,23 @@ export async function initLoginPage() {
         showLoginLoading();
 
         try {
-            const email = String(form.get("email") || "").trim().toLowerCase();
+            const login = String(form.get("login") || "").trim().toLowerCase();
             const password = String(passwordInput?.value || "");
-            window.localStorage.setItem(REMEMBERED_LOGIN_EMAIL_KEY, email);
+            window.localStorage.setItem(REMEMBERED_LOGIN_EMAIL_KEY, login);
+            const email = await resolveLoginEmail(login);
             await signInWithPassword(email, password);
+            const securityCheck = await runPostLoginSecurityCheck();
+            if (securityCheck?.requiresTwoFactor) {
+                status.textContent = "Enter the verification code sent to your email.";
+                loginForm.hidden = true;
+                if (twoFactorForm) {
+                    twoFactorForm.hidden = false;
+                    twoFactorForm.querySelector('input[name="code"]')?.focus();
+                }
+                setSubmittingState(submitButton, false);
+                hideLoginLoading();
+                return;
+            }
             const session = await getCurrentSessionContext();
             window.location.href = getDashboardUrl(session);
         } catch (error) {
@@ -413,6 +512,28 @@ export async function initLoginPage() {
                 passwordInput.value = "";
             }
             setSubmittingState(submitButton, false);
+            hideLoginLoading();
+        }
+    });
+
+    twoFactorForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = new FormData(twoFactorForm);
+        const code = String(form.get("code") || "").trim();
+        status.textContent = "Verifying code...";
+        hideLoginError(errorBanner);
+        setSubmittingState(twoFactorSubmitButton, true);
+        showLoginLoading();
+
+        try {
+            await verifyTwoFactorCode(code);
+            const session = await getCurrentSessionContext();
+            window.location.href = getDashboardUrl(session);
+        } catch (error) {
+            const message = error?.message || "Unable to verify code.";
+            status.textContent = message;
+            showLoginError(errorBanner, message);
+            setSubmittingState(twoFactorSubmitButton, false);
             hideLoginLoading();
         }
     });
