@@ -462,6 +462,7 @@ table th {
     inset: 0;
     background: rgba(14, 20, 28, 0.55);
     backdrop-filter: blur(6px);
+    pointer-events: none;
 }
 
 .business-modal__dialog {

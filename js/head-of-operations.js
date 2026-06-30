@@ -5,6 +5,9 @@ import { ensureRoute } from "./core/guards.js";
 import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta } from "./shared/ui.js";
 import { createPageLoadingController } from "./shared/page-loading.js";
 import { renderHeadOfOperationsDashboard } from "./dashboards/head-of-operations-dashboard.js";
+import { renderCustomers, bindCustomersActions } from "./modules/customers/customers.js";
+import { renderInvoices, bindInvoicesActions } from "./modules/invoices/invoices.js";
+import { renderExpenses, bindExpensesActions } from "./modules/expenses/expenses.js";
 import { renderGlPosting } from "./modules/gl-posting/gl-posting.js";
 import { renderReports } from "./modules/reports/reports.js";
 import { signOutUser } from "./core/auth.js";
@@ -23,6 +26,12 @@ function setHash(route) {
 
 async function renderRoute(route, session) {
     switch (route) {
+        case "customers":
+            return { summary: [], content: await renderCustomers(), afterRender: bindCustomersActions };
+        case "invoices":
+            return { summary: [], content: await renderInvoices(), afterRender: bindInvoicesActions };
+        case "expenses":
+            return { summary: [], content: await renderExpenses(), afterRender: bindExpensesActions };
         case "glPosting":
             return await renderGlPosting();
         case "reports":

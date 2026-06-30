@@ -43,14 +43,35 @@ function ensureSeeded() {
     }
 
     store.customers = [
-        { id: "demo-customer-1", name: "Atlas Manufacturing", industry: "Manufacturing", balance: 240000, last_payment_at: "2026-03-18" },
-        { id: "demo-customer-2", name: "Lumen Logistics", industry: "Logistics", balance: 125000, last_payment_at: "2026-03-14" }
+        { id: "demo-customer-1", name: "Atlas Manufacturing", email: "accounts@atlas.example", industry: "Manufacturing", balance: 240000, last_payment_at: "2026-03-18" },
+        { id: "demo-customer-2", name: "Lumen Logistics", email: "finance@lumen.example", industry: "Logistics", balance: 125000, last_payment_at: "2026-03-14" }
     ];
     store.expenses = [
         { id: "demo-expense-1", title: "Office Internet", category: "Utilities", amount: 58000, status: "approved", created_at: new Date().toISOString() }
     ];
     store.invoices = [
-        { id: "demo-invoice-1", invoice_number: "INV-1001", customer_name: "Atlas Manufacturing", total_amount: 320000, status: "sent", created_at: new Date().toISOString() }
+        {
+            id: "demo-invoice-1",
+            invoice_number: "INV-1001",
+            customer_id: "demo-customer-1",
+            customer_name: "Atlas Manufacturing",
+            subtotal_amount: 300000,
+            tax_amount: 20000,
+            total_amount: 320000,
+            status: "sent",
+            issued_at: new Date().toISOString().slice(0, 10),
+            due_date: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+            items: [
+                {
+                    description: "Monthly advisory service",
+                    quantity: 1,
+                    unit_price: 300000,
+                    tax_amount: 20000,
+                    line_total: 320000
+                }
+            ],
+            created_at: new Date().toISOString()
+        }
     ];
     store.counters = { customer: 3, expense: 2, invoice: 1002 };
     saveStore(store);
@@ -61,12 +82,23 @@ export function getDemoCustomers() {
     return ensureSeeded().customers;
 }
 
+export function getDemoCustomerById(customerId) {
+    return ensureSeeded().customers.find((customer) => String(customer.id || "") === String(customerId || "")) || null;
+}
+
+export function getDemoInvoicesForCustomer(customerId) {
+    return ensureSeeded().invoices.filter((invoice) => String(invoice.customer_id || "") === String(customerId || ""));
+}
+
 export function addDemoCustomer(payload) {
     const store = ensureSeeded();
     const id = `demo-customer-${store.counters.customer++}`;
     store.customers.unshift({
         id,
         name: payload.name,
+        email: payload.email || null,
+        phone: payload.phone || null,
+        billing_address: payload.billingAddress || payload.billing_address || null,
         industry: payload.industry || "General",
         balance: 0,
         last_payment_at: null
@@ -124,14 +156,63 @@ export function addDemoInvoice(payload) {
     const store = ensureSeeded();
     const id = `demo-invoice-${store.counters.invoice}`;
     const invoiceNumber = payload.invoiceNumber || `INV-${String(store.counters.invoice).padStart(4, "0")}`;
+    const customer = store.customers.find((item) => String(item.id) === String(payload.customerId));
     store.counters.invoice += 1;
     store.invoices.unshift({
         id,
         invoice_number: invoiceNumber,
-        customer_name: payload.customerName || "Walk-in Customer",
+        customer_id: payload.customerId || null,
+        customer_name: customer?.name || payload.customerName || "Walk-in Customer",
+        subtotal_amount: Number(payload.subtotalAmount || 0),
+        tax_amount: Number(payload.taxAmount || 0),
         total_amount: Number(payload.totalAmount || 0),
-        status: "draft",
+        status: payload.status || "draft",
+        issued_at: payload.issuedAt || new Date().toISOString().slice(0, 10),
+        due_date: payload.dueDate || null,
+        items: Array.isArray(payload.items) ? payload.items : [],
         created_at: new Date().toISOString()
     });
     saveStore(store);
+}
+
+export function getDemoInvoiceById(invoiceId) {
+    const store = ensureSeeded();
+    const invoice = store.invoices.find((item) => String(item.id || "") === String(invoiceId || ""));
+    if (!invoice) {
+        return null;
+    }
+
+    const customer = store.customers.find((item) => String(item.id || "") === String(invoice.customer_id || ""));
+    return {
+        ...invoice,
+        customer_name: customer?.name || invoice.customer_name || "Walk-in Customer",
+        customer_email: customer?.email || "",
+        customer_phone: customer?.phone || "",
+        customer_billing_address: customer?.billing_address || "",
+        items: Array.isArray(invoice.items) ? invoice.items : []
+    };
+}
+
+export function recordDemoInvoicePayment(invoiceId, payment) {
+    const store = ensureSeeded();
+    const invoice = store.invoices.find((item) => String(item.id || "") === String(invoiceId || ""));
+    if (!invoice) {
+        throw new Error("Invoice was not found.");
+    }
+
+    invoice.status = "paid";
+    invoice.last_payment = {
+        amount: Number(payment.amount || invoice.total_amount || 0),
+        payment_method: payment.paymentMethod || "Cash",
+        reference: payment.reference || "",
+        received_at: payment.receivedAt || new Date().toISOString().slice(0, 10)
+    };
+
+    const customer = store.customers.find((item) => String(item.id || "") === String(invoice.customer_id || ""));
+    if (customer) {
+        customer.last_payment_at = invoice.last_payment.received_at;
+    }
+
+    saveStore(store);
+    return invoice;
 }

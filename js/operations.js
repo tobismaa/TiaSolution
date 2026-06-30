@@ -6,6 +6,9 @@ import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta
 import { createPageLoadingController } from "./shared/page-loading.js";
 import { renderOperationsDashboard, renderOperationsWorkspacePage } from "./dashboards/operations-dashboard.js";
 import { renderAccountManagement } from "./modules/account-management/account-management.js";
+import { renderCustomers, bindCustomersActions } from "./modules/customers/customers.js";
+import { renderInvoices, bindInvoicesActions } from "./modules/invoices/invoices.js";
+import { renderExpenses, bindExpensesActions } from "./modules/expenses/expenses.js";
 import { renderGlPosting } from "./modules/gl-posting/gl-posting.js";
 import { renderReports } from "./modules/reports/reports.js";
 import { renderAssets } from "./modules/assets/assets.js";
@@ -29,6 +32,12 @@ async function renderRoute(route, session) {
             return await renderAccountManagement();
         case "operation":
             return await renderOperationsWorkspacePage();
+        case "customers":
+            return { summary: [], content: await renderCustomers(), afterRender: bindCustomersActions };
+        case "invoices":
+            return { summary: [], content: await renderInvoices(), afterRender: bindInvoicesActions };
+        case "expenses":
+            return { summary: [], content: await renderExpenses(), afterRender: bindExpensesActions };
         case "glPosting":
             return await renderGlPosting();
         case "reports":
