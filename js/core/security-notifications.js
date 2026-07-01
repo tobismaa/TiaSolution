@@ -45,6 +45,14 @@ export async function sendSecurityNotification(payload) {
             if (response.ok) {
                 return true;
             }
+
+            let errorBody = "";
+            try {
+                errorBody = await response.text();
+            } catch {
+                errorBody = "";
+            }
+            console.warn(`[Tia security] Email API rejected request with ${response.status}.`, errorBody);
         } catch {
             // Try the next configured endpoint.
         }

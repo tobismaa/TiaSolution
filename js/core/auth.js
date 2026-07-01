@@ -172,7 +172,11 @@ export function startLoginAttemptMonitor() {
             sendSecurityNotification({
                 type: "blocked_login_attempt",
                 occurredAt: attemptAt
-            }).catch(() => {});
+            }).then((sent) => {
+                console.info(`[Tia security] Blocked-login email ${sent ? "sent or accepted" : "was not sent"}.`);
+            }).catch((error) => {
+                console.warn("[Tia security] Blocked-login email failed.", error);
+            });
         } catch {
             // Keep the dashboard quiet if the optional monitor cannot poll.
         }
