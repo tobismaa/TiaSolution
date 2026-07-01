@@ -1,5 +1,8 @@
 import { getSupabaseClient } from "../../core/supabase-client.js";
 import { getCurrentSessionContext } from "../../core/session.js";
+import { getActiveBranchDetails } from "../../core/data-access.js";
+import { getStoredBranchScope } from "../../core/branch-scope.js";
+import { getBranchesForCurrentBusiness } from "../branches/branches-service.js";
 import {
     addDemoInvoice,
     getDemoCustomers,
@@ -9,6 +12,90 @@ import {
 } from "../../demo/demo-records.js";
 
 const DEFAULT_TERMS_DAYS = 14;
+
+function isMissingColumnError(error, columnName) {
+    const code = String(error?.code || "").toUpperCase();
+    const message = String(error?.message || "").toLowerCase();
+    const details = String(error?.details || "").toLowerCase();
+    return code === "PGRST204" || message.includes(columnName) || details.includes(columnName);
+}
+
+function isMissingOptionalInvoiceColumnError(error) {
+    return isMissingColumnError(error, "notes")
+        || isMissingColumnError(error, "payment_terms")
+        || isMissingColumnError(error, "accepted_payment_methods");
+}
+
+function isDuplicateInvoiceNumberError(error) {
+    const code = String(error?.code || "").toUpperCase();
+    const message = String(error?.message || "").toLowerCase();
+    const details = String(error?.details || "").toLowerCase();
+    return code === "23505"
+        || message.includes("duplicate key")
+        || details.includes("invoice_number")
+        || message.includes("invoices_business_id_invoice_number_key");
+}
+
+function normalizeInvoicePrefix(value) {
+    const normalized = String(value || "INV")
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    return normalized || "INV";
+}
+
+function getInvoiceSequence(invoiceNumber, prefix) {
+    const normalized = String(invoiceNumber || "").trim().toUpperCase();
+    const normalizedPrefix = normalizeInvoicePrefix(prefix);
+    if (!normalized.startsWith(`${normalizedPrefix}-`)) {
+        return 0;
+    }
+
+    const match = normalized.match(/(\d+)$/);
+    if (!match) {
+        return 0;
+    }
+    if (match[1].length > 6) {
+        return 0;
+    }
+
+    const sequence = Number(match[1]);
+    return Number.isFinite(sequence) ? sequence : 0;
+}
+
+async function getInvoicePrefix(supabase, businessId) {
+    const { data, error } = await supabase
+        .from("business_settings")
+        .select("invoice_prefix")
+        .eq("business_id", businessId)
+        .maybeSingle();
+
+    if (error) {
+        return "INV";
+    }
+
+    return normalizeInvoicePrefix(data?.invoice_prefix || "INV");
+}
+
+async function getNextInvoiceNumber(supabase, businessId) {
+    const prefix = await getInvoicePrefix(supabase, businessId);
+    const { data, error } = await supabase
+        .from("invoices")
+        .select("invoice_number")
+        .eq("business_id", businessId);
+
+    if (error) {
+        return `${prefix}-${Date.now()}`;
+    }
+
+    const highest = (data || []).reduce((max, row) => {
+        const sequence = getInvoiceSequence(row?.invoice_number, prefix);
+        return sequence > max ? sequence : max;
+    }, 0);
+
+    return `${prefix}-${String(highest + 1).padStart(4, "0")}`;
+}
 
 function today() {
     return new Date().toISOString().slice(0, 10);
@@ -64,9 +151,14 @@ function buildInvoicePayload(payload) {
     }
 
     return {
-        invoiceNumber: String(payload.invoiceNumber || "").trim() || `INV-${Date.now()}`,
+        invoiceNumber: String(payload.invoiceNumber || "").trim(),
         customerId: String(payload.customerId || "").trim() || null,
         customerName: String(payload.customerName || "").trim(),
+        branchId: String(payload.branchId || "").trim() || null,
+        branchName: String(payload.branchName || "").trim(),
+        notes: String(payload.notes || "").trim(),
+        paymentTerms: String(payload.paymentTerms || "").trim(),
+        acceptedPaymentMethods: String(payload.acceptedPaymentMethods || "").trim(),
         issuedAt,
         dueDate: payload.dueDate || addDays(issuedAt, DEFAULT_TERMS_DAYS),
         status: normalizeStatus(payload.status),
@@ -86,6 +178,11 @@ function mapInvoiceDetail(invoice) {
         customerEmail: invoice.customers?.email || invoice.customer_email || "",
         customerPhone: invoice.customers?.phone || invoice.customer_phone || "",
         customerAddress: invoice.customers?.billing_address || invoice.customer_billing_address || "",
+        branchId: invoice.branch_id || null,
+        branchName: invoice.branches?.name || invoice.branch_name || "Head Office",
+        notes: invoice.notes || "",
+        paymentTerms: invoice.payment_terms || "",
+        acceptedPaymentMethods: invoice.accepted_payment_methods || "",
         issuedAt: invoice.issued_at || "",
         dueDate: invoice.due_date || "",
         subtotal: Number(invoice.subtotal_amount || invoice.total_amount || 0),
@@ -102,6 +199,43 @@ function mapInvoiceDetail(invoice) {
     };
 }
 
+async function getSelectedScopeBranchForInvoice(session) {
+    if (String(session?.role || "").toLowerCase() !== "business_admin") {
+        return null;
+    }
+
+    const selectedBranchId = String(getStoredBranchScope()?.branchId || "").trim();
+    if (!selectedBranchId) {
+        return null;
+    }
+
+    const branches = await getBranchesForCurrentBusiness().catch(() => []);
+    const selected = branches.find((branch) => String(branch.id || "") === selectedBranchId);
+    if (!selected) {
+        return null;
+    }
+
+    return {
+        id: String(selected.id || "").trim(),
+        name: String(selected.name || "").trim(),
+        isHeadOffice: Boolean(selected.isHeadOffice),
+        canAccessAllBranches: Boolean(selected.isHeadOffice)
+    };
+}
+
+export async function resolveInvoiceBranch(session, preferredBranchId = "", preferredBranchName = "") {
+    const activeBranch = await getActiveBranchDetails(session.userId, session.businessId);
+    const selectedScopeBranch = activeBranch?.canAccessAllBranches
+        ? await getSelectedScopeBranchForInvoice(session)
+        : null;
+    const branch = selectedScopeBranch || activeBranch || {};
+
+    return {
+        id: String(preferredBranchId || branch.id || "").trim() || null,
+        name: String(preferredBranchName || branch.name || "Head Office").trim()
+    };
+}
+
 export async function getInvoices() {
     const supabase = getSupabaseClient();
     const session = await getCurrentSessionContext();
@@ -110,12 +244,17 @@ export async function getInvoices() {
             id: invoice.id || invoice.invoice_number,
             number: invoice.invoice_number,
             customer: invoice.customer_name || "Walk-in Customer",
+            branchId: invoice.branch_id || null,
+            branchName: invoice.branches?.name || invoice.branch_name || "Head Office",
             issuedAt: invoice.issued_at || "",
             dueDate: invoice.due_date || "",
             subtotal: Number(invoice.subtotal_amount || invoice.total_amount || 0),
             tax: Number(invoice.tax_amount || 0),
             amount: Number(invoice.total_amount || 0),
             status: invoice.status,
+            notes: invoice.notes || "",
+            paymentTerms: invoice.payment_terms || invoice.paymentTerms || "",
+            acceptedPaymentMethods: invoice.accepted_payment_methods || invoice.acceptedPaymentMethods || "",
             items: Array.isArray(invoice.items) ? invoice.items : []
         }));
     }
@@ -129,6 +268,67 @@ export async function getInvoices() {
         .select(`
             id,
             invoice_number,
+            branch_id,
+            issued_at,
+            due_date,
+            subtotal_amount,
+            tax_amount,
+            total_amount,
+            notes,
+            payment_terms,
+            accepted_payment_methods,
+            status,
+            customers (
+                name
+            ),
+            branches (
+                name
+            ),
+            invoice_items (
+                description,
+                quantity,
+                unit_price,
+                tax_amount,
+                line_total
+            )
+        `)
+        .eq("business_id", session.businessId)
+        .order("created_at", { ascending: false });
+
+    if (error && isMissingOptionalInvoiceColumnError(error)) {
+        return getInvoicesWithoutNotes(supabase, session);
+    }
+
+    if (error) {
+        throw error;
+    }
+
+    return (data || []).map((invoice) => ({
+        id: invoice.id || invoice.invoice_number,
+        number: invoice.invoice_number,
+        customer: invoice.customers?.name || "Walk-in Customer",
+        branchId: invoice.branch_id || null,
+        branchName: invoice.branches?.name || "Head Office",
+        issuedAt: invoice.issued_at || "",
+        dueDate: invoice.due_date || "",
+        subtotal: Number(invoice.subtotal_amount || 0),
+        tax: Number(invoice.tax_amount || 0),
+        amount: Number(invoice.total_amount || 0),
+        status: invoice.status,
+        notes: invoice.notes || "",
+        paymentTerms: invoice.payment_terms || "",
+        acceptedPaymentMethods: invoice.accepted_payment_methods || "",
+        items: Array.isArray(invoice.invoice_items) ? invoice.invoice_items : []
+    }));
+}
+
+async function getInvoicesWithoutNotes(supabase, session) {
+    const { data, error } = await supabase
+        .from("invoices")
+        .select(`
+            id,
+            invoice_number,
+            branch_id,
             issued_at,
             due_date,
             subtotal_amount,
@@ -136,6 +336,9 @@ export async function getInvoices() {
             total_amount,
             status,
             customers (
+                name
+            ),
+            branches (
                 name
             ),
             invoice_items (
@@ -157,12 +360,17 @@ export async function getInvoices() {
         id: invoice.id || invoice.invoice_number,
         number: invoice.invoice_number,
         customer: invoice.customers?.name || "Walk-in Customer",
+        branchId: invoice.branch_id || null,
+        branchName: invoice.branches?.name || "Head Office",
         issuedAt: invoice.issued_at || "",
         dueDate: invoice.due_date || "",
         subtotal: Number(invoice.subtotal_amount || 0),
         tax: Number(invoice.tax_amount || 0),
         amount: Number(invoice.total_amount || 0),
         status: invoice.status,
+        notes: "",
+        paymentTerms: "",
+        acceptedPaymentMethods: "",
         items: Array.isArray(invoice.invoice_items) ? invoice.invoice_items : []
     }));
 }
@@ -192,6 +400,66 @@ export async function getInvoiceDetails(invoiceId) {
             id,
             customer_id,
             invoice_number,
+            branch_id,
+            issued_at,
+            due_date,
+            subtotal_amount,
+            tax_amount,
+            total_amount,
+            notes,
+            payment_terms,
+            accepted_payment_methods,
+            status,
+            customers (
+                name,
+                email,
+                phone,
+                billing_address
+            ),
+            branches (
+                name
+            ),
+            invoice_items (
+                description,
+                quantity,
+                unit_price,
+                tax_amount,
+                line_total
+            )
+        `)
+        .eq("business_id", session.businessId)
+        .eq("id", invoiceId)
+        .single();
+
+    if (error && isMissingOptionalInvoiceColumnError(error)) {
+        return getInvoiceDetailsWithoutNotes(supabase, session, invoiceId);
+    }
+
+    if (error) {
+        throw error;
+    }
+
+    const invoice = mapInvoiceDetail(data);
+    if (invoice.branchId) {
+        return invoice;
+    }
+
+    const branch = await resolveInvoiceBranch(session);
+    return {
+        ...invoice,
+        branchId: branch.id,
+        branchName: branch.name
+    };
+}
+
+async function getInvoiceDetailsWithoutNotes(supabase, session, invoiceId) {
+    const { data, error } = await supabase
+        .from("invoices")
+        .select(`
+            id,
+            customer_id,
+            invoice_number,
+            branch_id,
             issued_at,
             due_date,
             subtotal_amount,
@@ -203,6 +471,9 @@ export async function getInvoiceDetails(invoiceId) {
                 email,
                 phone,
                 billing_address
+            ),
+            branches (
+                name
             ),
             invoice_items (
                 description,
@@ -220,7 +491,17 @@ export async function getInvoiceDetails(invoiceId) {
         throw error;
     }
 
-    return mapInvoiceDetail(data);
+    const invoice = mapInvoiceDetail(data);
+    if (invoice.branchId) {
+        return invoice;
+    }
+
+    const branch = await resolveInvoiceBranch(session);
+    return {
+        ...invoice,
+        branchId: branch.id,
+        branchName: branch.name
+    };
 }
 
 export async function getInvoiceCustomers() {
@@ -262,9 +543,15 @@ export async function createInvoice(payload) {
     }
 
     const invoice = buildInvoicePayload(payload);
+    let branchId = invoice.branchId;
+    let branchName = invoice.branchName;
 
     if (session.mode !== "live") {
-        addDemoInvoice(invoice);
+        addDemoInvoice({
+            ...invoice,
+            branchId: branchId || "demo-branch-head-office",
+            branchName: branchName || "Head Office"
+        });
         return;
     }
 
@@ -272,10 +559,15 @@ export async function createInvoice(payload) {
         throw new Error("Business context is unavailable.");
     }
 
-    const { data: createdInvoice, error } = await supabase.from("invoices").insert({
+    const resolvedBranch = await resolveInvoiceBranch(session, branchId, branchName);
+    branchId = resolvedBranch.id;
+    branchName = resolvedBranch.name;
+
+    const invoiceRow = {
         business_id: session.businessId,
+        branch_id: branchId || null,
         customer_id: invoice.customerId,
-        invoice_number: invoice.invoiceNumber,
+        invoice_number: invoice.invoiceNumber || await getNextInvoiceNumber(supabase, session.businessId),
         subtotal_amount: invoice.subtotalAmount,
         tax_amount: invoice.taxAmount,
         total_amount: invoice.totalAmount,
@@ -283,7 +575,34 @@ export async function createInvoice(payload) {
         due_date: invoice.dueDate,
         status: invoice.status,
         created_by: session.userId || null
-    }).select("id").single();
+    };
+    if (invoice.notes) {
+        invoiceRow.notes = invoice.notes;
+    }
+    if (invoice.paymentTerms) {
+        invoiceRow.payment_terms = invoice.paymentTerms;
+    }
+    if (invoice.acceptedPaymentMethods) {
+        invoiceRow.accepted_payment_methods = invoice.acceptedPaymentMethods;
+    }
+
+    let { data: createdInvoice, error } = await supabase.from("invoices").insert(invoiceRow).select("id").single();
+
+    if (error && isMissingOptionalInvoiceColumnError(error)) {
+        delete invoiceRow.notes;
+        delete invoiceRow.payment_terms;
+        delete invoiceRow.accepted_payment_methods;
+        const fallback = await supabase.from("invoices").insert(invoiceRow).select("id").single();
+        createdInvoice = fallback.data;
+        error = fallback.error;
+    }
+
+    if (error && isDuplicateInvoiceNumberError(error) && !invoice.invoiceNumber) {
+        invoiceRow.invoice_number = await getNextInvoiceNumber(supabase, session.businessId);
+        const retry = await supabase.from("invoices").insert(invoiceRow).select("id").single();
+        createdInvoice = retry.data;
+        error = retry.error;
+    }
 
     if (error) {
         throw error;
@@ -338,9 +657,11 @@ export async function recordInvoicePayment(invoiceId, payload = {}) {
     }
 
     const invoice = await getInvoiceDetails(invoiceId);
+    const paymentBranch = await resolveInvoiceBranch(session, invoice.branchId, invoice.branchName);
 
     const { error: paymentError } = await supabase.from("payments").insert({
         business_id: session.businessId,
+        branch_id: paymentBranch.id || null,
         invoice_id: invoiceId,
         customer_id: invoice.customerId,
         amount: payment.amount,

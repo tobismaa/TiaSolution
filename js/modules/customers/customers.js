@@ -23,20 +23,30 @@ function addDays(dateValue, days) {
     return date.toISOString().slice(0, 10);
 }
 
-function toBase64Utf8(value) {
-    return btoa(unescape(encodeURIComponent(value)));
-}
+function setButtonLoading(button, isLoading) {
+    if (!button) {
+        return;
+    }
 
-function downloadTextFile(fileName, content, type) {
-    const blob = new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (!button.querySelector(".spinner")) {
+        const spinner = document.createElement("span");
+        spinner.className = "spinner";
+        spinner.setAttribute("aria-hidden", "true");
+        button.appendChild(spinner);
+    }
+
+    if (
+        !button.classList?.contains("btn")
+        && !button.classList?.contains("cell-link")
+        && !button.classList?.contains("icon-btn")
+        && !button.classList?.contains("customer-tab")
+    ) {
+        button.disabled = Boolean(isLoading);
+        return;
+    }
+
+    button.classList.toggle("is-loading", Boolean(isLoading));
+    button.disabled = Boolean(isLoading);
 }
 
 function renderCustomerModal() {
@@ -101,56 +111,74 @@ function renderCustomerDashboardModal() {
                     <button class="btn btn-secondary" type="button" data-email-customer>Email Customer</button>
                 </div>
                 <div data-customer-dashboard-body></div>
-                <section class="customer-inline-panel" data-customer-invoice-panel hidden>
-                    <div class="customer-inline-panel__head">
-                        <div>
-                            <p class="eyebrow">Billing</p>
-                            <h3>Create Invoice</h3>
-                        </div>
-                        <button class="icon-btn" type="button" aria-label="Close invoice form" data-close-customer-invoice-form>&times;</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderCustomerInvoiceModal() {
+    return `
+        <div class="business-modal" data-customer-invoice-modal hidden>
+            <div class="business-modal__backdrop" data-close-customer-invoice-form></div>
+            <div class="business-modal__dialog invoice-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="customerInvoiceTitle">
+                <div class="business-modal__head">
+                    <div>
+                        <p class="eyebrow">Billing</p>
+                        <h2 id="customerInvoiceTitle">Create Invoice</h2>
                     </div>
-                    <form class="form-grid" data-customer-invoice-form>
-                        <div class="customer-register-form__grid">
-                            <label class="form-field">
-                                <span>Invoice Number</span>
-                                <input type="text" name="invoiceNumber" placeholder="Auto generated if empty">
-                            </label>
-                            <label class="form-field">
-                                <span>Issue Date</span>
-                                <input type="date" name="issuedAt" value="${today()}" required>
-                            </label>
-                            <label class="form-field">
-                                <span>Due Date</span>
-                                <input type="date" name="dueDate" value="${addDays(today(), 14)}" required>
-                            </label>
-                            <label class="form-field">
-                                <span>Status</span>
-                                <select name="status">
-                                    <option value="draft">Draft</option>
-                                    <option value="sent" selected>Sent</option>
-                                </select>
-                            </label>
+                    <button class="icon-btn business-modal__close" type="button" aria-label="Close invoice form" data-close-customer-invoice-form>&times;</button>
+                </div>
+                <form class="form-grid" data-customer-invoice-form>
+                    <div class="customer-register-form__grid">
+                        <label class="form-field">
+                            <span>Issue Date</span>
+                            <input type="date" name="issuedAt" value="${today()}" required>
+                        </label>
+                        <label class="form-field">
+                            <span>Due Date</span>
+                            <input type="date" name="dueDate" value="${addDays(today(), 14)}" required>
+                        </label>
+                        <label class="form-field">
+                            <span>Status</span>
+                            <select name="status">
+                                <option value="draft">Draft</option>
+                                <option value="sent" selected>Sent</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="invoice-line-items">
+                        <div class="invoice-line-items__head">
+                            <h3>Items</h3>
+                            <button class="btn btn-secondary" type="button" data-add-customer-invoice-line>Add Item</button>
                         </div>
-                        <div class="invoice-line-items">
-                            <div class="invoice-line-items__head">
-                                <h3>Items</h3>
-                                <button class="btn btn-secondary" type="button" data-add-customer-invoice-line>Add Item</button>
-                            </div>
-                            <div class="invoice-line-items__rows" data-customer-invoice-lines>
-                                ${renderInvoiceLine()}
-                            </div>
+                        <div class="invoice-line-items__rows" data-customer-invoice-lines>
+                            ${renderInvoiceLine()}
                         </div>
-                        <div class="invoice-total-panel" aria-live="polite">
-                            <div><span>Subtotal</span><strong data-customer-invoice-subtotal>${formatCurrency(0)}</strong></div>
-                            <div><span>Tax</span><strong data-customer-invoice-tax>${formatCurrency(0)}</strong></div>
-                            <div><span>Total</span><strong data-customer-invoice-total>${formatCurrency(0)}</strong></div>
-                        </div>
-                        <div class="button-row customer-form__actions">
-                            <button class="btn btn-secondary" type="button" data-close-customer-invoice-form>Cancel</button>
-                            <button class="btn btn-primary" type="submit" data-save-customer-invoice-button>Create Invoice</button>
-                        </div>
-                    </form>
-                </section>
+                    </div>
+                    <label class="form-field">
+                        <span>Notes</span>
+                        <textarea name="notes" rows="3" placeholder="Payment terms, delivery note, or customer instruction"></textarea>
+                    </label>
+                    <div class="customer-register-form__grid">
+                        <label class="form-field">
+                            <span>Accepted Payment Methods</span>
+                            <input type="text" name="acceptedPaymentMethods" placeholder="Cash, Bank Transfer, POS">
+                        </label>
+                        <label class="form-field">
+                            <span>Payment Terms</span>
+                            <input type="text" name="paymentTerms" placeholder="Due on receipt, Net 14, Net 30">
+                        </label>
+                    </div>
+                    <div class="invoice-total-panel" aria-live="polite">
+                        <div><span>Subtotal</span><strong data-customer-invoice-subtotal>${formatCurrency(0)}</strong></div>
+                        <div><span>Tax</span><strong data-customer-invoice-tax>${formatCurrency(0)}</strong></div>
+                        <div><span>Total</span><strong data-customer-invoice-total>${formatCurrency(0)}</strong></div>
+                    </div>
+                    <div class="button-row customer-form__actions">
+                        <button class="btn btn-secondary" type="button" data-close-customer-invoice-form>Cancel</button>
+                        <button class="btn btn-primary" type="submit" data-save-customer-invoice-button>Create Invoice</button>
+                    </div>
+                </form>
             </div>
         </div>
     `;
@@ -196,6 +224,29 @@ function renderPaymentModal() {
                         <button class="btn btn-primary" type="submit" data-save-customer-payment-button>Record Payment</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    `;
+}
+
+function renderDocumentPreviewModal() {
+    return `
+        <div class="business-modal" data-customer-document-modal hidden>
+            <div class="business-modal__backdrop" data-customer-document-close></div>
+            <div class="business-modal__dialog invoice-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="customerDocumentTitle">
+                <div class="business-modal__head">
+                    <div>
+                        <p class="eyebrow">Receipt document</p>
+                        <h2 id="customerDocumentTitle">Receipt Preview</h2>
+                    </div>
+                    <button class="icon-btn business-modal__close" type="button" aria-label="Close modal" data-customer-document-close>&times;</button>
+                </div>
+                <div class="invoice-detail-actions">
+                    <button class="btn btn-secondary" type="button" data-customer-document-print>Download / Print PDF</button>
+                </div>
+                <div class="document-preview">
+                    <iframe title="Receipt PDF preview" data-customer-document-frame></iframe>
+                </div>
             </div>
         </div>
     `;
@@ -333,7 +384,7 @@ function renderCustomerDashboard(profile) {
     `;
 }
 
-function buildCustomerEmailDraft(customer, session) {
+function sendCustomerEmail(customer, session) {
     const subject = `Message from ${session?.businessName || "Tia"}`;
     const body = [
         `Hello ${customer.name},`,
@@ -341,21 +392,13 @@ function buildCustomerEmailDraft(customer, session) {
         "We are reaching out regarding your customer account.",
         "",
         "Thank you."
-    ].join("\r\n");
+    ].join("\n");
 
-    return [
-        `To: ${customer.email}`,
-        `Subject: ${subject}`,
-        "MIME-Version: 1.0",
-        "Content-Type: text/plain; charset=utf-8",
-        "Content-Transfer-Encoding: 8bit",
-        "",
-        body,
-        ""
-    ].join("\r\n");
+    window.location.href = `mailto:${encodeURIComponent(customer.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function buildReceiptHtml(customer, invoice, session) {
+function buildReceiptHtml(customer, invoice) {
+    const branchName = invoice.branchName || "Head Office";
     const rows = invoice.items.length
         ? invoice.items.map((item) => `
             <tr>
@@ -375,10 +418,10 @@ function buildReceiptHtml(customer, invoice, session) {
             <title>Receipt ${escapeHtml(invoice.number)}</title>
             <style>
                 * { box-sizing: border-box; }
-                :root { --ink: #17212b; --muted: #667085; --brand: #143f6b; --line: #d8e0e8; }
+                :root { --ink: #17212b; --muted: #667085; --brand: #146c43; --brand-2: #0f5132; --line: #d7e8df; }
                 body { font-family: Arial, sans-serif; color: var(--ink); margin: 0; padding: 0; background: #eef3f6; }
-                .page { width: min(820px, 100%); margin: 0 auto; padding: 34px; background: #ffffff; min-height: 100vh; }
-                .hero { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start; padding: 26px; border-radius: 18px; background: linear-gradient(135deg, #143f6b, #285a8e); color: #fff; }
+                .page { width: min(820px, 100%); margin: 0 auto; padding: 30px; background: #ffffff; min-height: 100vh; }
+                .hero { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start; padding: 26px; border-radius: 18px; background: linear-gradient(135deg, var(--brand-2), var(--brand)); color: #fff; }
                 h1, h2, h3, p { margin: 0; }
                 h1 { font-size: 28px; letter-spacing: 0; }
                 .hero p { color: rgba(255,255,255,0.78); margin-top: 6px; }
@@ -386,22 +429,22 @@ function buildReceiptHtml(customer, invoice, session) {
                 .amount-due { text-align: right; }
                 .amount-due span { display: block; color: rgba(255,255,255,0.78); font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
                 .amount-due strong { display: block; font-size: 26px; }
-                .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; margin: 22px 0; }
-                .box { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: #fffdf8; }
-                .box span, .total span { display: block; color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; }
-                .box strong { font-size: 15px; }
-                .box p { color: var(--muted); margin-top: 5px; }
-                .dates { display: grid; gap: 10px; }
+                .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; align-items: start; margin: 16px 0; }
+                .box { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fffdf8; }
+                .box span, .total span { display: block; color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+                .box strong { font-size: 14px; }
+                .box p { color: var(--muted); margin-top: 4px; line-height: 1.3; }
+                .dates { display: grid; gap: 8px; }
                 table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 20px 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
                 th, td { border-bottom: 1px solid var(--line); padding: 12px; text-align: left; font-size: 13px; }
-                th { color: var(--brand); background: #f3f7fb; font-size: 11px; text-transform: uppercase; }
+                th { color: var(--brand); background: #f0f8f4; font-size: 11px; text-transform: uppercase; }
                 tr:last-child td { border-bottom: 0; }
                 td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5),
                 th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5) { text-align: right; }
                 .summary { margin-left: auto; width: min(340px, 100%); display: grid; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
                 .total { display: flex; justify-content: space-between; gap: 16px; padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fff; }
                 .total:last-child { border-bottom: 0; }
-                .grand { font-size: 18px; font-weight: 700; color: var(--brand); background: #f7fbff; }
+                .grand { font-size: 18px; font-weight: 700; color: var(--brand); background: #f0f8f4; }
                 .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
                 @media print {
                     body { background: #fff; }
@@ -415,7 +458,7 @@ function buildReceiptHtml(customer, invoice, session) {
                 <section class="hero">
                     <div>
                         <span class="status">paid</span>
-                        <h1>${escapeHtml(session?.businessName || "Tia Business Workspace")}</h1>
+                        <h1>${escapeHtml(branchName)}</h1>
                         <p>Receipt ${escapeHtml(invoice.number)}</p>
                     </div>
                     <div class="amount-due">
@@ -431,6 +474,10 @@ function buildReceiptHtml(customer, invoice, session) {
                         <p>${escapeHtml(customer.phone || "")}</p>
                     </div>
                     <div class="box dates">
+                        <div>
+                            <span>Branch</span>
+                            <strong>${escapeHtml(branchName)}</strong>
+                        </div>
                         <div>
                             <span>Issued</span>
                             <strong>${escapeHtml(invoice.issuedAt || "Pending")}</strong>
@@ -458,23 +505,9 @@ function buildReceiptHtml(customer, invoice, session) {
         </html>`;
 }
 
-function printHtml(html) {
-    const frame = document.createElement("iframe");
-    frame.setAttribute("aria-hidden", "true");
-    frame.style.position = "fixed";
-    frame.style.width = "0";
-    frame.style.height = "0";
-    frame.style.border = "0";
-    frame.style.visibility = "hidden";
-    document.body.appendChild(frame);
-    frame.onload = () => {
-        window.setTimeout(() => {
-            frame.contentWindow?.focus();
-            frame.contentWindow?.print();
-            window.setTimeout(() => frame.remove(), 1000);
-        }, 120);
-    };
-    frame.srcdoc = html;
+function printPreviewFrame(frame) {
+    frame?.contentWindow?.focus();
+    frame?.contentWindow?.print();
 }
 
 export async function renderCustomers() {
@@ -503,7 +536,9 @@ export async function renderCustomers() {
             </section>
             ${renderCustomerModal()}
             ${renderCustomerDashboardModal()}
+            ${renderCustomerInvoiceModal()}
             ${renderPaymentModal()}
+            ${renderDocumentPreviewModal()}
         </div>
     `;
 }
@@ -516,7 +551,7 @@ export function bindCustomersActions(container, refresh) {
     const dashboardModal = container.querySelector("[data-customer-dashboard-modal]");
     const dashboardTitle = container.querySelector("[data-customer-dashboard-title]");
     const dashboardBody = container.querySelector("[data-customer-dashboard-body]");
-    const invoicePanel = container.querySelector("[data-customer-invoice-panel]");
+    const invoiceModal = container.querySelector("[data-customer-invoice-modal]");
     const invoiceForm = container.querySelector("[data-customer-invoice-form]");
     const invoiceLines = container.querySelector("[data-customer-invoice-lines]");
     const saveInvoiceButton = container.querySelector("[data-save-customer-invoice-button]");
@@ -527,6 +562,8 @@ export function bindCustomersActions(container, refresh) {
     const paymentForm = container.querySelector("[data-customer-payment-form]");
     const paymentAmount = paymentForm?.querySelector("[name='amount']");
     const savePaymentButton = container.querySelector("[data-save-customer-payment-button]");
+    const documentModal = container.querySelector("[data-customer-document-modal]");
+    const documentFrame = container.querySelector("[data-customer-document-frame]");
     let activeProfile = null;
     let activeInvoice = null;
 
@@ -542,7 +579,29 @@ export function bindCustomersActions(container, refresh) {
     };
     const closeDashboard = () => {
         if (dashboardModal) dashboardModal.hidden = true;
-        if (invoicePanel) invoicePanel.hidden = true;
+        closeInvoiceModal();
+    };
+    const closeInvoiceModal = () => {
+        if (invoiceModal) invoiceModal.hidden = true;
+        invoiceForm?.reset();
+        if (invoiceLines) invoiceLines.innerHTML = renderInvoiceLine();
+        updateInvoiceTotals();
+    };
+    const openInvoiceModal = () => {
+        if (!activeProfile) return;
+        if (invoiceModal) {
+            invoiceModal.hidden = false;
+            invoiceModal.querySelector("input, select, textarea")?.focus();
+        }
+        updateInvoiceTotals();
+    };
+    const closeDocumentPreview = () => {
+        if (documentModal) documentModal.hidden = true;
+        if (documentFrame) documentFrame.srcdoc = "";
+    };
+    const openDocumentPreview = (html) => {
+        if (documentFrame) documentFrame.srcdoc = html;
+        if (documentModal) documentModal.hidden = false;
     };
     const openDashboard = async (customerId) => {
         activeProfile = await getCustomerProfile(customerId);
@@ -580,9 +639,26 @@ export function bindCustomersActions(container, refresh) {
         if (totalNode) totalNode.textContent = formatCurrency(totals.total);
     };
 
-    addButton?.addEventListener("click", openCustomerForm);
+    addButton?.addEventListener("click", () => {
+        setButtonLoading(addButton, true);
+        try {
+            openCustomerForm();
+        } finally {
+            window.setTimeout(() => setButtonLoading(addButton, false), 180);
+        }
+    });
     container.querySelectorAll("[data-customer-form-close]").forEach((control) => control.addEventListener("click", closeCustomerForm));
     container.querySelectorAll("[data-customer-dashboard-close]").forEach((control) => control.addEventListener("click", closeDashboard));
+    container.querySelectorAll("[data-customer-document-close]").forEach((control) => control.addEventListener("click", closeDocumentPreview));
+    container.querySelector("[data-customer-document-print]")?.addEventListener("click", (event) => {
+        const printButton = event.currentTarget;
+        setButtonLoading(printButton, true);
+        try {
+            printPreviewFrame(documentFrame);
+        } finally {
+            window.setTimeout(() => setButtonLoading(printButton, false), 180);
+        }
+    });
     container.querySelectorAll("[data-customer-payment-close]").forEach((control) => {
         control.addEventListener("click", () => {
             if (paymentModal) paymentModal.hidden = true;
@@ -599,7 +675,7 @@ export function bindCustomersActions(container, refresh) {
             return;
         }
 
-        if (saveCustomerButton) saveCustomerButton.disabled = true;
+        setButtonLoading(saveCustomerButton, true);
         try {
             await createCustomer({
                 name,
@@ -614,7 +690,7 @@ export function bindCustomersActions(container, refresh) {
         } catch (error) {
             showToast(error.message || "Unable to save customer.");
         } finally {
-            if (saveCustomerButton) saveCustomerButton.disabled = false;
+            setButtonLoading(saveCustomerButton, false);
         }
     });
 
@@ -624,6 +700,7 @@ export function bindCustomersActions(container, refresh) {
 
         const tabButton = target.closest("[data-customer-tab]");
         if (tabButton) {
+            setButtonLoading(tabButton, true);
             const tabKey = String(tabButton.getAttribute("data-customer-tab") || "");
             const tabsRoot = tabButton.closest("[data-customer-tabs]");
             tabsRoot?.querySelectorAll("[data-customer-tab]").forEach((button) => {
@@ -636,12 +713,25 @@ export function bindCustomersActions(container, refresh) {
                 panel.classList.toggle("is-active", isActive);
                 panel.hidden = !isActive;
             });
+            window.setTimeout(() => setButtonLoading(tabButton, false), 160);
             return;
         }
 
         const profileButton = target.closest("[data-open-customer]");
         const receiptButton = target.closest("[data-customer-receipt]");
         const paymentButton = target.closest("[data-customer-payment]");
+        const actionButton = profileButton
+            || target.closest("[data-open-customer-invoice-form]")
+            || target.closest("[data-close-customer-invoice-form]")
+            || target.closest("[data-email-customer]")
+            || receiptButton
+            || paymentButton;
+        if (!actionButton) return;
+        if (actionButton.disabled) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const shouldSpin = !target.closest("[data-close-customer-invoice-form]");
+        if (shouldSpin) setButtonLoading(actionButton, true);
 
         try {
             if (profileButton) {
@@ -649,17 +739,11 @@ export function bindCustomersActions(container, refresh) {
                 return;
             }
             if (target.closest("[data-open-customer-invoice-form]")) {
-                if (!activeProfile) return;
-                if (invoicePanel) invoicePanel.hidden = false;
-                invoicePanel?.querySelector("input, select, textarea")?.focus();
-                updateInvoiceTotals();
+                openInvoiceModal();
                 return;
             }
             if (target.closest("[data-close-customer-invoice-form]")) {
-                if (invoicePanel) invoicePanel.hidden = true;
-                invoiceForm?.reset();
-                if (invoiceLines) invoiceLines.innerHTML = renderInvoiceLine();
-                updateInvoiceTotals();
+                closeInvoiceModal();
                 return;
             }
             if (target.closest("[data-email-customer]")) {
@@ -668,9 +752,7 @@ export function bindCustomersActions(container, refresh) {
                     return;
                 }
                 const session = await getCurrentSessionContext();
-                const draft = buildCustomerEmailDraft(activeProfile.customer, session);
-                downloadTextFile(`${activeProfile.customer.name.replace(/[^a-z0-9_-]+/gi, "-") || "customer"}-email.eml`, draft, "message/rfc822;charset=utf-8");
-                showToast("Customer email draft downloaded.");
+                sendCustomerEmail(activeProfile.customer, session);
                 return;
             }
             if (receiptButton && activeProfile) {
@@ -679,7 +761,7 @@ export function bindCustomersActions(container, refresh) {
                     showToast("Record a payment before generating a receipt.");
                     return;
                 }
-                printHtml(buildReceiptHtml(activeProfile.customer, invoice, await getCurrentSessionContext()));
+                openDocumentPreview(buildReceiptHtml(activeProfile.customer, invoice));
                 return;
             }
             if (paymentButton && activeProfile) {
@@ -691,30 +773,44 @@ export function bindCustomersActions(container, refresh) {
                 if (paymentAmount && activeInvoice) paymentAmount.value = String(activeInvoice.amount || 0);
                 if (paymentModal) paymentModal.hidden = false;
                 paymentModal?.querySelector("input, select, textarea")?.focus();
+                return;
             }
         } catch (error) {
             showToast(error.message || "Unable to open customer profile.");
+        } finally {
+            if (shouldSpin) setButtonLoading(actionButton, false);
         }
     });
 
     invoiceLines?.addEventListener("click", (event) => {
         const removeButton = event.target instanceof Element ? event.target.closest("[data-remove-customer-invoice-line]") : null;
         if (!removeButton) return;
-        const rows = getLineRows();
-        if (rows.length <= 1) {
-            rows[0]?.querySelectorAll("input").forEach((input) => {
-                input.value = input.name === "quantity" ? "1" : "0";
-                if (input.name === "description") input.value = "";
-            });
-        } else {
-            removeButton.closest("[data-customer-invoice-line]")?.remove();
+        setButtonLoading(removeButton, true);
+        try {
+            const rows = getLineRows();
+            if (rows.length <= 1) {
+                rows[0]?.querySelectorAll("input").forEach((input) => {
+                    input.value = input.name === "quantity" ? "1" : "0";
+                    if (input.name === "description") input.value = "";
+                });
+            } else {
+                removeButton.closest("[data-customer-invoice-line]")?.remove();
+            }
+            updateInvoiceTotals();
+        } finally {
+            window.setTimeout(() => setButtonLoading(removeButton, false), 180);
         }
-        updateInvoiceTotals();
     });
     invoiceLines?.addEventListener("input", updateInvoiceTotals);
-    container.querySelector("[data-add-customer-invoice-line]")?.addEventListener("click", () => {
-        invoiceLines?.insertAdjacentHTML("beforeend", renderInvoiceLine());
-        updateInvoiceTotals();
+    container.querySelector("[data-add-customer-invoice-line]")?.addEventListener("click", (event) => {
+        const lineButton = event.currentTarget;
+        setButtonLoading(lineButton, true);
+        try {
+            invoiceLines?.insertAdjacentHTML("beforeend", renderInvoiceLine());
+            updateInvoiceTotals();
+        } finally {
+            window.setTimeout(() => setButtonLoading(lineButton, false), 180);
+        }
     });
 
     invoiceForm?.addEventListener("submit", async (event) => {
@@ -727,26 +823,26 @@ export function bindCustomersActions(container, refresh) {
             return;
         }
 
-        if (saveInvoiceButton) saveInvoiceButton.disabled = true;
+        setButtonLoading(saveInvoiceButton, true);
         try {
             await createInvoice({
                 customerId: activeProfile.customer.id,
                 customerName: activeProfile.customer.name,
-                invoiceNumber: String(formData.get("invoiceNumber") || "").trim(),
                 issuedAt: String(formData.get("issuedAt") || ""),
                 dueDate: String(formData.get("dueDate") || ""),
                 status: String(formData.get("status") || "sent"),
+                notes: String(formData.get("notes") || "").trim(),
+                acceptedPaymentMethods: String(formData.get("acceptedPaymentMethods") || "").trim(),
+                paymentTerms: String(formData.get("paymentTerms") || "").trim(),
                 items
             });
             showToast("Invoice created");
-            invoiceForm.reset();
-            if (invoiceLines) invoiceLines.innerHTML = renderInvoiceLine();
-            if (invoicePanel) invoicePanel.hidden = true;
+            closeInvoiceModal();
             await openDashboard(activeProfile.customer.id);
         } catch (error) {
             showToast(error.message || "Unable to create invoice.");
         } finally {
-            if (saveInvoiceButton) saveInvoiceButton.disabled = false;
+            setButtonLoading(saveInvoiceButton, false);
         }
     });
 
@@ -754,7 +850,7 @@ export function bindCustomersActions(container, refresh) {
         event.preventDefault();
         if (!activeProfile || !activeInvoice) return;
         const formData = new FormData(paymentForm);
-        if (savePaymentButton) savePaymentButton.disabled = true;
+        setButtonLoading(savePaymentButton, true);
         try {
             await recordInvoicePayment(activeInvoice.id, {
                 amount: Number(formData.get("amount") || 0),
@@ -769,7 +865,7 @@ export function bindCustomersActions(container, refresh) {
         } catch (error) {
             showToast(error.message || "Unable to record payment.");
         } finally {
-            if (savePaymentButton) savePaymentButton.disabled = false;
+            setButtonLoading(savePaymentButton, false);
         }
     });
 

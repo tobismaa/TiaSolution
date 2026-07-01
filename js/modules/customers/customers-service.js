@@ -1,6 +1,7 @@
 import { getSupabaseClient } from "../../core/supabase-client.js";
 import { getCurrentSessionContext } from "../../core/session.js";
 import { addDemoCustomer, getDemoCustomerById, getDemoCustomers, getDemoInvoicesForCustomer } from "../../demo/demo-records.js";
+import { resolveInvoiceBranch } from "../invoices/invoices-service.js";
 
 function mapCustomer(customer) {
     return {
@@ -23,6 +24,8 @@ function mapInvoice(invoice, payments = []) {
     return {
         id: invoice.id,
         number: invoice.invoice_number,
+        branchId: invoice.branch_id || null,
+        branchName: invoice.branches?.name || invoice.branch_name || "Head Office",
         issuedAt: invoice.issued_at || "",
         dueDate: invoice.due_date || "",
         subtotal: Number(invoice.subtotal_amount || 0),
@@ -42,6 +45,18 @@ function mapInvoice(invoice, payments = []) {
             reference: latestPayment.reference || "",
             receivedAt: latestPayment.received_at || latestPayment.receivedAt || ""
         } : null
+    };
+}
+
+function applyFallbackBranch(invoice, branch) {
+    if (invoice.branchId || !branch?.id) {
+        return invoice;
+    }
+
+    return {
+        ...invoice,
+        branchId: branch.id,
+        branchName: branch.name || invoice.branchName
     };
 }
 
@@ -117,12 +132,16 @@ export async function getCustomerProfile(customerId) {
             .select(`
                 id,
                 invoice_number,
+                branch_id,
                 issued_at,
                 due_date,
                 subtotal_amount,
                 tax_amount,
                 total_amount,
                 status,
+                branches (
+                    name
+                ),
                 invoice_items (
                     description,
                     quantity,
@@ -147,9 +166,10 @@ export async function getCustomerProfile(customerId) {
     if (paymentsResult.error) throw paymentsResult.error;
 
     const payments = paymentsResult.data || [];
+    const fallbackBranch = await resolveInvoiceBranch(session).catch(() => null);
     return {
         customer: mapCustomer(customerResult.data),
-        invoices: (invoicesResult.data || []).map((invoice) => mapInvoice(invoice, payments)),
+        invoices: (invoicesResult.data || []).map((invoice) => applyFallbackBranch(mapInvoice(invoice, payments), fallbackBranch)),
         payments: payments.map((payment) => {
             const invoice = (invoicesResult.data || []).find((item) => String(item.id) === String(payment.invoice_id));
             return {

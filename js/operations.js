@@ -1,6 +1,7 @@
 import { getCurrentSessionContext } from "./core/session.js";
 import { getAccessBanner } from "./core/subscription.js";
-import { ROLES, ROLE_NAV, getDefaultRoute } from "./core/roles.js";
+import { ROLES, ROLE_NAV } from "./core/roles.js";
+import { getDefaultRouteForRoutes, getEnabledRoutesForRole } from "./core/features.js";
 import { ensureRoute } from "./core/guards.js";
 import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta } from "./shared/ui.js";
 import { createPageLoadingController } from "./shared/page-loading.js";
@@ -8,6 +9,7 @@ import { renderOperationsDashboard, renderOperationsWorkspacePage } from "./dash
 import { renderAccountManagement } from "./modules/account-management/account-management.js";
 import { renderCustomers, bindCustomersActions } from "./modules/customers/customers.js";
 import { renderInvoices, bindInvoicesActions } from "./modules/invoices/invoices.js";
+import { renderCustomerBilling } from "./modules/customer-billing/customer-billing.js";
 import { renderExpenses, bindExpensesActions } from "./modules/expenses/expenses.js";
 import { renderGlPosting } from "./modules/gl-posting/gl-posting.js";
 import { renderReports } from "./modules/reports/reports.js";
@@ -32,6 +34,8 @@ async function renderRoute(route, session) {
             return await renderAccountManagement();
         case "operation":
             return await renderOperationsWorkspacePage();
+        case "customerBilling":
+            return await renderCustomerBilling(session);
         case "customers":
             return { summary: [], content: await renderCustomers(), afterRender: bindCustomersActions };
         case "invoices":
@@ -76,7 +80,7 @@ export async function initOperationsShell() {
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
 
-    const navItems = ROLE_NAV[ROLES.STAFF];
+    const navItems = getEnabledRoutesForRole(ROLES.STAFF, session.featureKeys);
     const banner = getAccessBanner(session);
     sidebarPeriod.textContent = session.currentPeriod;
     sidebarInsight.textContent = session.mode === "live"
@@ -88,7 +92,7 @@ export async function initOperationsShell() {
     async function refresh() {
         loading.show();
         try {
-            const targetRoute = ensureRoute(ROLES.STAFF, getRouteFromHash() || getDefaultRoute(ROLES.STAFF));
+            const targetRoute = ensureRoute(ROLES.STAFF, getRouteFromHash() || getDefaultRouteForRoutes(navItems), navItems);
             if (targetRoute !== getRouteFromHash()) {
                 setHash(targetRoute);
                 return;
@@ -136,7 +140,7 @@ export async function initOperationsShell() {
     window.addEventListener("hashchange", refresh);
 
     if (!window.location.hash) {
-        setHash(getDefaultRoute(ROLES.STAFF));
+        setHash(getDefaultRouteForRoutes(navItems));
     }
 
     await refresh();

@@ -25,6 +25,22 @@ function escapeHtml(value) {
         .replace(/'/g, "&#039;");
 }
 
+function setButtonLoading(button, isLoading) {
+    if (!button) {
+        return;
+    }
+
+    if (!button.querySelector(".spinner")) {
+        const spinner = document.createElement("span");
+        spinner.className = "spinner";
+        spinner.setAttribute("aria-hidden", "true");
+        button.appendChild(spinner);
+    }
+
+    button.classList.toggle("is-loading", Boolean(isLoading));
+    button.disabled = Boolean(isLoading);
+}
+
 function today() {
     return new Date().toISOString().slice(0, 10);
 }
@@ -78,10 +94,6 @@ function renderInvoiceModal(customers, role) {
                             </select>
                         </label>
                         <label class="form-field">
-                            <span>Invoice Number</span>
-                            <input type="text" name="invoiceNumber" placeholder="Auto generated if empty">
-                        </label>
-                        <label class="form-field">
                             <span>Issue Date</span>
                             <input type="date" name="issuedAt" value="${issuedAt}" required>
                         </label>
@@ -105,6 +117,21 @@ function renderInvoiceModal(customers, role) {
                         <div class="invoice-line-items__rows" data-invoice-lines>
                             ${renderInvoiceLine()}
                         </div>
+                    </div>
+
+                    <label class="form-field">
+                        <span>Notes</span>
+                        <textarea name="notes" rows="3" placeholder="Payment terms, delivery note, or customer instruction"></textarea>
+                    </label>
+                    <div class="invoice-form__grid">
+                        <label class="form-field">
+                            <span>Accepted Payment Methods</span>
+                            <input type="text" name="acceptedPaymentMethods" placeholder="Cash, Bank Transfer, POS">
+                        </label>
+                        <label class="form-field">
+                            <span>Payment Terms</span>
+                            <input type="text" name="paymentTerms" placeholder="Due on receipt, Net 14, Net 30">
+                        </label>
                     </div>
 
                     <div class="invoice-total-panel" aria-live="polite">
@@ -167,6 +194,9 @@ function renderInvoiceDetailsModal() {
                     <button class="btn btn-secondary" type="button" data-invoice-detail-print>Download / Print PDF</button>
                     <button class="btn btn-secondary" type="button" data-invoice-detail-email>Send Email</button>
                     <button class="btn btn-primary" type="button" data-invoice-detail-payment>Record Payment</button>
+                </div>
+                <div class="document-preview" data-invoice-document-preview hidden>
+                    <iframe title="Invoice PDF preview" data-invoice-document-frame></iframe>
                 </div>
                 <div data-invoice-details-body></div>
             </div>
@@ -259,6 +289,7 @@ function renderInvoiceDetail(invoice) {
             </div>
             <div class="invoice-document__meta">
                 <div><span>Customer</span><strong>${escapeHtml(invoice.customer)}</strong></div>
+                <div><span>Branch</span><strong>${escapeHtml(invoice.branchName || "Head Office")}</strong></div>
                 <div><span>Email</span><strong>${escapeHtml(invoice.customerEmail || "Not set")}</strong></div>
                 <div><span>Issued</span><strong>${escapeHtml(invoice.issuedAt || "Pending")}</strong></div>
                 <div><span>Due</span><strong>${escapeHtml(invoice.dueDate || "Pending")}</strong></div>
@@ -277,6 +308,9 @@ function renderInvoiceDetail(invoice) {
                     <tbody>${rows}</tbody>
                 </table>
             </div>
+            ${invoice.acceptedPaymentMethods ? `<div class="invoice-document__note"><span>Accepted Payment Methods</span><p>${escapeHtml(invoice.acceptedPaymentMethods)}</p></div>` : ""}
+            ${invoice.paymentTerms ? `<div class="invoice-document__note"><span>Payment Terms</span><p>${escapeHtml(invoice.paymentTerms)}</p></div>` : ""}
+            ${invoice.notes ? `<div class="invoice-document__note"><span>Notes</span><p>${escapeHtml(invoice.notes)}</p></div>` : ""}
             <div class="invoice-document__summary">
                 <div><span>Subtotal</span><strong>${formatCurrency(invoice.subtotal)}</strong></div>
                 <div><span>Tax</span><strong>${formatCurrency(invoice.tax)}</strong></div>
@@ -286,7 +320,8 @@ function renderInvoiceDetail(invoice) {
     `;
 }
 
-function buildInvoicePrintHtml(invoice, session) {
+function buildInvoicePrintHtml(invoice) {
+    const branchName = invoice.branchName || "Head Office";
     const rows = invoice.items.map((item) => `
         <tr>
             <td>${escapeHtml(item.description)}</td>
@@ -304,10 +339,10 @@ function buildInvoicePrintHtml(invoice, session) {
             <title>${escapeHtml(invoice.number)}</title>
             <style>
                 * { box-sizing: border-box; }
-                :root { --ink: #17212b; --muted: #667085; --brand: #143f6b; --line: #d8e0e8; }
+                :root { --ink: #17212b; --muted: #667085; --brand: #146c43; --brand-2: #0f5132; --line: #d7e8df; }
                 body { font-family: Arial, sans-serif; color: var(--ink); margin: 0; padding: 0; background: #eef3f6; }
-                .page { width: min(820px, 100%); margin: 0 auto; padding: 34px; background: #ffffff; min-height: 100vh; }
-                .hero { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start; padding: 26px; border-radius: 18px; background: linear-gradient(135deg, #143f6b, #285a8e); color: #fff; }
+                .page { width: min(820px, 100%); margin: 0 auto; padding: 30px; background: #ffffff; min-height: 100vh; }
+                .hero { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start; padding: 26px; border-radius: 18px; background: linear-gradient(135deg, var(--brand-2), var(--brand)); color: #fff; }
                 h1, h2, h3, p { margin: 0; }
                 h1 { font-size: 28px; letter-spacing: 0; }
                 .hero p { color: rgba(255,255,255,0.78); margin-top: 6px; }
@@ -315,22 +350,27 @@ function buildInvoicePrintHtml(invoice, session) {
                 .amount-due { text-align: right; }
                 .amount-due span { display: block; color: rgba(255,255,255,0.78); font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
                 .amount-due strong { display: block; font-size: 26px; }
-                .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; margin: 22px 0; }
-                .box { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: #fffdf8; }
-                .box span, .total span { display: block; color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; }
-                .box strong { font-size: 15px; }
-                .box p { color: var(--muted); margin-top: 5px; }
-                .dates { display: grid; gap: 10px; }
+                .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; align-items: start; margin: 16px 0; }
+                .box { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fffdf8; }
+                .box span, .total span { display: block; color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+                .box strong { font-size: 14px; }
+                .box p { color: var(--muted); margin-top: 4px; line-height: 1.3; }
+                .dates { display: grid; gap: 8px; }
                 table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 20px 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
                 th, td { border-bottom: 1px solid var(--line); padding: 12px; text-align: left; font-size: 13px; }
-                th { color: var(--brand); background: #f3f7fb; font-size: 11px; text-transform: uppercase; }
+                th { color: var(--brand); background: #f0f8f4; font-size: 11px; text-transform: uppercase; }
                 tr:last-child td { border-bottom: 0; }
                 td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5),
                 th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5) { text-align: right; }
                 .summary { margin-left: auto; width: min(340px, 100%); display: grid; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+                .note { margin: 18px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #f0f8f4; }
+                .note span { display: block; color: var(--brand); font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
+                .note p { color: var(--ink); line-height: 1.5; }
+                .note-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+                .note-grid .note { margin: 0; }
                 .total { display: flex; justify-content: space-between; gap: 16px; padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fff; }
                 .total:last-child { border-bottom: 0; }
-                .grand { font-size: 18px; font-weight: 700; color: var(--brand); background: #f7fbff; }
+                .grand { font-size: 18px; font-weight: 700; color: var(--brand); background: #f0f8f4; }
                 .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
                 @media print {
                     body { background: #fff; }
@@ -344,7 +384,7 @@ function buildInvoicePrintHtml(invoice, session) {
                 <section class="hero">
                     <div>
                         <span class="status">${escapeHtml(invoice.status)}</span>
-                        <h1>${escapeHtml(session?.businessName || "Tia Business Workspace")}</h1>
+                        <h1>${escapeHtml(branchName)}</h1>
                         <p>Invoice ${escapeHtml(invoice.number)}</p>
                     </div>
                     <div class="amount-due">
@@ -361,6 +401,10 @@ function buildInvoicePrintHtml(invoice, session) {
                     </div>
                     <div class="box dates">
                         <div>
+                            <span>Branch</span>
+                            <strong>${escapeHtml(branchName)}</strong>
+                        </div>
+                        <div>
                             <span>Issued</span>
                             <strong>${escapeHtml(invoice.issuedAt || "Pending")}</strong>
                         </div>
@@ -374,6 +418,13 @@ function buildInvoicePrintHtml(invoice, session) {
                     <thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Tax</th><th>Total</th></tr></thead>
                     <tbody>${rows}</tbody>
                 </table>
+                ${invoice.acceptedPaymentMethods || invoice.paymentTerms ? `
+                    <section class="note-grid">
+                        ${invoice.acceptedPaymentMethods ? `<div class="note"><span>Accepted Payment Methods</span><p>${escapeHtml(invoice.acceptedPaymentMethods)}</p></div>` : ""}
+                        ${invoice.paymentTerms ? `<div class="note"><span>Payment Terms</span><p>${escapeHtml(invoice.paymentTerms)}</p></div>` : ""}
+                    </section>
+                ` : ""}
+                ${invoice.notes ? `<section class="note"><span>Notes</span><p>${escapeHtml(invoice.notes)}</p></section>` : ""}
                 <section class="summary">
                     <div class="total"><span>Subtotal</span><strong>${formatCurrency(invoice.subtotal)}</strong></div>
                     <div class="total"><span>Tax</span><strong>${formatCurrency(invoice.tax)}</strong></div>
@@ -387,7 +438,7 @@ function buildInvoicePrintHtml(invoice, session) {
         </html>`;
 }
 
-function printInvoice(invoice, session) {
+function printInvoice(invoice) {
     const frame = document.createElement("iframe");
     frame.setAttribute("aria-hidden", "true");
     frame.style.position = "fixed";
@@ -405,7 +456,12 @@ function printInvoice(invoice, session) {
             window.setTimeout(() => frame.remove(), 1000);
         }, 120);
     };
-    frame.srcdoc = buildInvoicePrintHtml(invoice, session);
+    frame.srcdoc = buildInvoicePrintHtml(invoice);
+}
+
+function printPreviewFrame(frame) {
+    frame?.contentWindow?.focus();
+    frame?.contentWindow?.print();
 }
 
 function sendInvoiceEmail(invoice, session) {
@@ -486,6 +542,8 @@ export function bindInvoicesActions(container, refresh) {
     const saveButton = container.querySelector("[data-save-invoice-button]");
     const detailModal = container.querySelector("[data-invoice-details-modal]");
     const detailBody = container.querySelector("[data-invoice-details-body]");
+    const documentPreview = container.querySelector("[data-invoice-document-preview]");
+    const documentFrame = container.querySelector("[data-invoice-document-frame]");
     const paymentModal = container.querySelector("[data-invoice-payment-modal]");
     const paymentForm = container.querySelector("[data-invoice-payment-form]");
     const paymentAmount = paymentForm?.querySelector("[name='amount']");
@@ -507,10 +565,18 @@ export function bindInvoicesActions(container, refresh) {
         updateTotals();
     };
 
-    const openDetailModal = (invoice) => {
+    const openDetailModal = (invoice, options = {}) => {
         activeInvoice = invoice;
+        const showPreview = options.mode === "preview";
         if (detailBody) {
-            detailBody.innerHTML = renderInvoiceDetail(invoice);
+            detailBody.hidden = showPreview;
+            detailBody.innerHTML = showPreview ? "" : renderInvoiceDetail(invoice);
+        }
+        if (documentPreview) {
+            documentPreview.hidden = !showPreview;
+        }
+        if (documentFrame) {
+            documentFrame.srcdoc = showPreview ? buildInvoicePrintHtml(invoice) : "";
         }
         if (detailModal) {
             detailModal.hidden = false;
@@ -519,6 +585,9 @@ export function bindInvoicesActions(container, refresh) {
 
     const closeDetailModal = () => {
         if (detailModal) detailModal.hidden = true;
+        if (documentFrame) documentFrame.srcdoc = "";
+        if (documentPreview) documentPreview.hidden = true;
+        if (detailBody) detailBody.hidden = false;
     };
 
     const openPaymentModal = (invoice) => {
@@ -589,7 +658,12 @@ export function bindInvoicesActions(container, refresh) {
     }
 
     button?.addEventListener("click", async () => {
-        openModal();
+        setButtonLoading(button, true);
+        try {
+            openModal();
+        } finally {
+            window.setTimeout(() => setButtonLoading(button, false), 180);
+        }
     });
 
     container.querySelectorAll("[data-invoice-modal-close]").forEach((control) => {
@@ -604,24 +678,35 @@ export function bindInvoicesActions(container, refresh) {
         control.addEventListener("click", closePaymentModal);
     });
 
-    container.querySelector("[data-add-invoice-line]")?.addEventListener("click", () => {
-        linesContainer?.insertAdjacentHTML("beforeend", renderInvoiceLine());
-        updateTotals();
+    container.querySelector("[data-add-invoice-line]")?.addEventListener("click", (event) => {
+        const lineButton = event.currentTarget;
+        setButtonLoading(lineButton, true);
+        try {
+            linesContainer?.insertAdjacentHTML("beforeend", renderInvoiceLine());
+            updateTotals();
+        } finally {
+            window.setTimeout(() => setButtonLoading(lineButton, false), 180);
+        }
     });
 
     linesContainer?.addEventListener("click", (event) => {
         const removeButton = event.target instanceof Element ? event.target.closest("[data-remove-invoice-line]") : null;
         if (!removeButton) return;
-        const rows = getLineRows();
-        if (rows.length <= 1) {
-            rows[0]?.querySelectorAll("input").forEach((input) => {
-                input.value = input.name === "quantity" ? "1" : "0";
-                if (input.name === "description") input.value = "";
-            });
-        } else {
-            removeButton.closest("[data-invoice-line]")?.remove();
+        setButtonLoading(removeButton, true);
+        try {
+            const rows = getLineRows();
+            if (rows.length <= 1) {
+                rows[0]?.querySelectorAll("input").forEach((input) => {
+                    input.value = input.name === "quantity" ? "1" : "0";
+                    if (input.name === "description") input.value = "";
+                });
+            } else {
+                removeButton.closest("[data-invoice-line]")?.remove();
+            }
+            updateTotals();
+        } finally {
+            window.setTimeout(() => setButtonLoading(removeButton, false), 180);
         }
-        updateTotals();
     });
 
     linesContainer?.addEventListener("input", (event) => {
@@ -648,6 +733,12 @@ export function bindInvoicesActions(container, refresh) {
         const detailPrintButton = target.closest("[data-invoice-detail-print]");
         const detailEmailButton = target.closest("[data-invoice-detail-email]");
         const detailPaymentButton = target.closest("[data-invoice-detail-payment]");
+        const actionButton = viewButton || printButton || emailButton || paymentButton || detailPrintButton || detailEmailButton || detailPaymentButton;
+        if (!actionButton) return;
+        if (actionButton.disabled) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setButtonLoading(actionButton, true);
 
         try {
             if (viewButton) {
@@ -657,7 +748,7 @@ export function bindInvoicesActions(container, refresh) {
 
             if (printButton) {
                 const invoice = await loadInvoice(printButton.getAttribute("data-invoice-print"));
-                printInvoice(invoice, await getCurrentSessionContext());
+                openDetailModal(invoice, { mode: "preview" });
                 return;
             }
 
@@ -673,7 +764,11 @@ export function bindInvoicesActions(container, refresh) {
             }
 
             if (detailPrintButton && activeInvoice) {
-                printInvoice(activeInvoice, await getCurrentSessionContext());
+                if (documentFrame?.srcdoc) {
+                    printPreviewFrame(documentFrame);
+                } else {
+                    printInvoice(activeInvoice);
+                }
                 return;
             }
 
@@ -687,6 +782,8 @@ export function bindInvoicesActions(container, refresh) {
             }
         } catch (error) {
             showToast(error.message || "Unable to load invoice.");
+        } finally {
+            setButtonLoading(actionButton, false);
         }
     });
 
@@ -704,15 +801,17 @@ export function bindInvoicesActions(container, refresh) {
             return;
         }
 
-        if (saveButton) saveButton.disabled = true;
+        setButtonLoading(saveButton, true);
         try {
             await createInvoice({
                 customerId: String(formData.get("customerId") || ""),
                 customerName: selectedCustomer,
-                invoiceNumber: String(formData.get("invoiceNumber") || "").trim(),
                 issuedAt: String(formData.get("issuedAt") || ""),
                 dueDate: String(formData.get("dueDate") || ""),
                 status: String(formData.get("status") || "draft"),
+                notes: String(formData.get("notes") || "").trim(),
+                acceptedPaymentMethods: String(formData.get("acceptedPaymentMethods") || "").trim(),
+                paymentTerms: String(formData.get("paymentTerms") || "").trim(),
                 items
             });
             showToast("Invoice created");
@@ -721,7 +820,7 @@ export function bindInvoicesActions(container, refresh) {
         } catch (error) {
             showToast(error.message || "Unable to create invoice.");
         } finally {
-            if (saveButton) saveButton.disabled = false;
+            setButtonLoading(saveButton, false);
         }
     });
 
@@ -733,7 +832,7 @@ export function bindInvoicesActions(container, refresh) {
         }
 
         const formData = new FormData(paymentForm);
-        if (savePaymentButton) savePaymentButton.disabled = true;
+        setButtonLoading(savePaymentButton, true);
         try {
             await recordInvoicePayment(activeInvoice.id, {
                 amount: Number(formData.get("amount") || 0),
@@ -748,7 +847,7 @@ export function bindInvoicesActions(container, refresh) {
         } catch (error) {
             showToast(error.message || "Unable to record payment.");
         } finally {
-            if (savePaymentButton) savePaymentButton.disabled = false;
+            setButtonLoading(savePaymentButton, false);
         }
     });
 

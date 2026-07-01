@@ -2,6 +2,7 @@ import { formatCurrency } from "../core/utils.js";
 import { getCurrentSessionContext } from "../core/session.js";
 import { getSupabaseClient } from "../core/supabase-client.js";
 import { getReportsSummary } from "../modules/reports/reports-service.js";
+import { isFeatureEnabled } from "../core/features.js";
 
 function toAmount(value) {
     const amount = Number(value || 0);
@@ -106,13 +107,15 @@ async function getAdminMetrics() {
 
 export async function renderAdminDashboard() {
     const metrics = await getAdminMetrics();
+    const session = await getCurrentSessionContext();
+    const summary = [
+        { label: "Revenue", value: metrics.revenue, note: "live data", tone: "up", feature: "reports" },
+        { label: "Expenses", value: metrics.expenses, note: "posted total", tone: "down", feature: "expenses" },
+        { label: "Invoices Due", value: String(metrics.invoicesDueCount), note: `${metrics.invoicesDueAmount} pending`, tone: "warn", feature: "customerBilling" }
+    ].filter((card) => isFeatureEnabled(session?.featureKeys, card.feature, session?.role));
 
     return {
-        summary: [
-            { label: "Revenue", value: metrics.revenue, note: "live data", tone: "up" },
-            { label: "Expenses", value: metrics.expenses, note: "posted total", tone: "down" },
-            { label: "Invoices Due", value: String(metrics.invoicesDueCount), note: `${metrics.invoicesDueAmount} pending`, tone: "warn" }
-        ],
+        summary,
         content: `
             <div class="section-stack">
                 <section class="hero-card">

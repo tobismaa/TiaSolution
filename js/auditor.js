@@ -1,7 +1,8 @@
 import { getCurrentSessionContext } from "./core/session.js";
 import { getStoredBranchScope, resolveBranchScope, saveBranchScope } from "./core/branch-scope.js";
 import { getAccessBanner } from "./core/subscription.js";
-import { ROLES, ROLE_NAV, getDefaultRoute } from "./core/roles.js";
+import { ROLES, ROLE_NAV } from "./core/roles.js";
+import { getDefaultRouteForRoutes, getEnabledRoutesForRole } from "./core/features.js";
 import { ensureRoute } from "./core/guards.js";
 import { getActiveBranchDetails } from "./core/data-access.js";
 import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta } from "./shared/ui.js";
@@ -82,7 +83,10 @@ export async function initAuditorShell() {
     signOutButton?.parentElement?.insertBefore(scopeWidget, signOutButton);
     const scopeSelect = scopeWidget.querySelector("[data-account-branch-scope]");
 
-    const navItems = ROLE_NAV[session.role] || ROLE_NAV[ROLES.ACCOUNT] || ROLE_NAV[ROLES.AUDITOR];
+    const navItems = getEnabledRoutesForRole(session.role, session.featureKeys)
+        || ROLE_NAV[session.role]
+        || ROLE_NAV[ROLES.ACCOUNT]
+        || ROLE_NAV[ROLES.AUDITOR];
     const banner = getAccessBanner(session);
     sidebarPeriod.textContent = session.currentPeriod;
     sidebarInsight.textContent = session.mode === "live"
@@ -167,7 +171,7 @@ export async function initAuditorShell() {
         loading.show();
         try {
             const scope = await loadScopeBranches();
-            const targetRoute = ensureRoute(session.role, getRouteFromHash() || getDefaultRoute(session.role));
+            const targetRoute = ensureRoute(session.role, getRouteFromHash() || getDefaultRouteForRoutes(navItems), navItems);
             if (targetRoute !== getRouteFromHash()) {
                 setHash(targetRoute);
                 return;
@@ -223,7 +227,7 @@ export async function initAuditorShell() {
     window.addEventListener("hashchange", refresh);
 
     if (!window.location.hash) {
-        setHash(getDefaultRoute(session.role));
+        setHash(getDefaultRouteForRoutes(navItems));
     }
 
     await refresh();

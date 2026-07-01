@@ -22,6 +22,7 @@ export const ROUTES = {
     glPosting: { label: "GL Posting", title: "GL Posting", eyebrow: "Journal posting" },
     branches: { label: "Branches", title: "Branches", eyebrow: "Organization structure" },
     generalLedgers: { label: "Chart of Accounts", title: "Chart of Accounts", eyebrow: "Account structure" },
+    customerBilling: { label: "Customers & Invoices", title: "Customers & Invoices", eyebrow: "Customer ledger and billing control" },
     customers: { label: "Customers", title: "Customers", eyebrow: "Customer ledger" },
     invoices: { label: "Invoices", title: "Invoices", eyebrow: "Billing control" },
     expenses: { label: "Expenses", title: "Expenses", eyebrow: "Spend management" },
@@ -39,9 +40,9 @@ export const ROUTES = {
 };
 
 export const ROLE_NAV = {
-    [ROLES.BUSINESS_ADMIN]: ["dashboard", "branches", "customers", "invoices", "payroll", "users"],
-    [ROLES.MANAGER]: ["dashboard", "customers", "invoices", "glPosting", "reports"],
-    [ROLES.STAFF]: ["dashboard", "operation", "accountManagement", "customers", "invoices", "payroll", "glPosting", "reports", "assets"],
+    [ROLES.BUSINESS_ADMIN]: ["dashboard", "branches", "customerBilling", "payroll", "users"],
+    [ROLES.MANAGER]: ["dashboard", "customerBilling", "glPosting", "reports"],
+    [ROLES.STAFF]: ["dashboard", "operation", "accountManagement", "customerBilling", "payroll", "glPosting", "reports", "assets"],
     [ROLES.AUDITOR]: ["dashboard", "trialBalance", "generalLedgers", "reports"],
     [ROLES.ACCOUNT]: ["dashboard", "payroll", "generalLedgers", "reports"],
     [ROLES.SUPER_ADMIN]: ["dashboard", "businesses", "demoRequests", "subscriptions", "settings"]

@@ -1,7 +1,7 @@
 import { DEFAULT_TRIAL_DAYS, getCurrentPeriodLabel } from "./constants.js";
 import { ROLES, ROLE_LABELS } from "./roles.js";
 import { getSupabaseClient } from "./supabase-client.js";
-import { getBusinessMembership, getPlatformAdminRole, getProfileName } from "./data-access.js";
+import { getBusinessMembership, getEffectiveBusinessFeatureKeys, getPlatformAdminRole, getProfileName } from "./data-access.js";
 
 const STORAGE_KEY = "tia_demo_session";
 const DEMO_ROLES = [ROLES.BUSINESS_ADMIN, ROLES.MANAGER, ROLES.STAFF, ROLES.AUDITOR, ROLES.ACCOUNT];
@@ -188,15 +188,20 @@ export async function getCurrentSessionContext() {
         || nonSuperMetadataRole
         || platformBusinessRole
         || ROLES.BUSINESS_ADMIN;
+    const businessId = isPlatformAdmin ? null : (membership?.businessId || user.user_metadata?.business_id || null);
+    const branchId = isPlatformAdmin ? "" : (membership?.branchId || user.user_metadata?.branch_id || "");
+    const featureKeys = businessId ? await getEffectiveBusinessFeatureKeys(businessId, branchId) : null;
 
     return {
         userId: user.id,
         fullName: displayName,
         role: isPlatformAdmin ? ROLES.SUPER_ADMIN : resolvedBusinessRole,
-        businessId: isPlatformAdmin ? null : (membership?.businessId || user.user_metadata?.business_id || null),
+        businessId,
+        branchId,
         businessName: isPlatformAdmin
             ? (user.user_metadata?.business_name || "Tia Platform Workspace")
             : (membership?.businessName || user.user_metadata?.business_name || "Tia Business Workspace"),
+        featureKeys,
         mode: "live",
         userEmail: user.email,
         subscriptionLabel: isPlatformAdmin

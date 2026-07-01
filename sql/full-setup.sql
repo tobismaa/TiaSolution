@@ -102,6 +102,27 @@ create table if not exists public.business_settings (
     updated_at timestamptz not null default now()
 );
 
+create table if not exists public.business_features (
+    business_id uuid not null references public.businesses(id) on delete cascade,
+    feature_key text not null,
+    is_enabled boolean not null default false,
+    sort_order integer,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (business_id, feature_key)
+);
+
+create table if not exists public.branch_features (
+    business_id uuid not null references public.businesses(id) on delete cascade,
+    branch_id uuid not null references public.branches(id) on delete cascade,
+    feature_key text not null,
+    is_enabled boolean not null default false,
+    sort_order integer,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (business_id, branch_id, feature_key)
+);
+
 create table if not exists public.tax_rates (
     id uuid primary key default gen_random_uuid(),
     business_id uuid not null references public.businesses(id) on delete cascade,
@@ -167,6 +188,9 @@ create table if not exists public.invoices (
     subtotal_amount numeric(14,2) not null default 0,
     tax_amount numeric(14,2) not null default 0,
     total_amount numeric(14,2) not null default 0,
+    notes text,
+    accepted_payment_methods text,
+    payment_terms text,
     due_date date,
     issued_at date default current_date,
     created_by uuid references auth.users(id) on delete set null,
@@ -423,6 +447,8 @@ alter table public.demo_access_links enable row level security;
 alter table public.branches enable row level security;
 alter table public.business_members enable row level security;
 alter table public.business_settings enable row level security;
+alter table public.business_features enable row level security;
+alter table public.branch_features enable row level security;
 alter table public.tax_rates enable row level security;
 alter table public.chart_of_accounts enable row level security;
 alter table public.customers enable row level security;
@@ -645,6 +671,28 @@ create policy "business scoped settings"
 on public.business_settings for all
 using (business_id in (select public.current_business_ids()))
 with check (business_id in (select public.current_business_ids()));
+
+drop policy if exists "platform admins manage business features" on public.business_features;
+create policy "platform admins manage business features"
+on public.business_features for all
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
+
+drop policy if exists "business members view business features" on public.business_features;
+create policy "business members view business features"
+on public.business_features for select
+using (business_id in (select public.current_business_ids()));
+
+drop policy if exists "platform admins manage branch features" on public.branch_features;
+create policy "platform admins manage branch features"
+on public.branch_features for all
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
+
+drop policy if exists "business members view branch features" on public.branch_features;
+create policy "business members view branch features"
+on public.branch_features for select
+using (business_id in (select public.current_business_ids()));
 
 drop policy if exists "business scoped branches" on public.branches;
 create policy "business scoped branches"

@@ -1,7 +1,8 @@
 import { getCurrentSessionContext } from "./core/session.js";
 import { getStoredBranchScope, resolveBranchScope, saveBranchScope } from "./core/branch-scope.js";
 import { getAccessBanner } from "./core/subscription.js";
-import { ROLES, ROLE_NAV, getDefaultRoute } from "./core/roles.js";
+import { ROLES, ROLE_NAV } from "./core/roles.js";
+import { getDefaultRouteForRoutes, getEnabledRoutesForRole } from "./core/features.js";
 import { ensureRoute } from "./core/guards.js";
 import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta } from "./shared/ui.js";
 import { createPageLoadingController } from "./shared/page-loading.js";
@@ -10,6 +11,7 @@ import { renderBranches } from "./modules/branches/branches.js";
 import { getBranchesForCurrentBusiness } from "./modules/branches/branches-service.js";
 import { renderCustomers, bindCustomersActions } from "./modules/customers/customers.js";
 import { renderInvoices, bindInvoicesActions } from "./modules/invoices/invoices.js";
+import { renderCustomerBilling } from "./modules/customer-billing/customer-billing.js";
 import { renderExpenses, bindExpensesActions } from "./modules/expenses/expenses.js";
 import { renderPayroll } from "./modules/payroll/payroll.js";
 import { renderReports } from "./modules/reports/reports.js";
@@ -38,6 +40,8 @@ async function renderRoute(route, session, scope) {
                 appliesToAll: Boolean(scope?.appliesToAll),
                 label: scope?.label || "Head Office"
             });
+        case "customerBilling":
+            return await renderCustomerBilling(session);
         case "customers":
             return { summary: [], content: await renderCustomers(), afterRender: bindCustomersActions };
         case "invoices":
@@ -93,7 +97,7 @@ export async function initAdminShell() {
     signOutButton?.parentElement?.insertBefore(scopeWidget, signOutButton);
     const scopeSelect = scopeWidget.querySelector("[data-admin-branch-scope]");
 
-    const navItems = ROLE_NAV[ROLES.BUSINESS_ADMIN];
+    const navItems = getEnabledRoutesForRole(ROLES.BUSINESS_ADMIN, session.featureKeys);
     const banner = getAccessBanner(session);
     sidebarPeriod.textContent = session.currentPeriod;
     sidebarInsight.textContent = session.mode === "live"
@@ -134,7 +138,7 @@ export async function initAdminShell() {
         loading.show();
         try {
             await loadScopeBranches();
-            const targetRoute = ensureRoute(ROLES.BUSINESS_ADMIN, getRouteFromHash() || getDefaultRoute(ROLES.BUSINESS_ADMIN));
+            const targetRoute = ensureRoute(ROLES.BUSINESS_ADMIN, getRouteFromHash() || getDefaultRouteForRoutes(navItems), navItems);
             if (targetRoute !== getRouteFromHash()) {
                 setHash(targetRoute);
                 return;
@@ -187,7 +191,7 @@ export async function initAdminShell() {
     window.addEventListener("hashchange", refresh);
 
     if (!window.location.hash) {
-        setHash(getDefaultRoute(ROLES.BUSINESS_ADMIN));
+        setHash(getDefaultRouteForRoutes(navItems));
     }
 
     await refresh();

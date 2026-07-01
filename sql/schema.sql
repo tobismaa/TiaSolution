@@ -93,6 +93,27 @@ create table if not exists public.business_settings (
     updated_at timestamptz not null default now()
 );
 
+create table if not exists public.business_features (
+    business_id uuid not null references public.businesses(id) on delete cascade,
+    feature_key text not null,
+    is_enabled boolean not null default false,
+    sort_order integer,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (business_id, feature_key)
+);
+
+create table if not exists public.branch_features (
+    business_id uuid not null references public.businesses(id) on delete cascade,
+    branch_id uuid not null references public.branches(id) on delete cascade,
+    feature_key text not null,
+    is_enabled boolean not null default false,
+    sort_order integer,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (business_id, branch_id, feature_key)
+);
+
 create table if not exists public.tax_rates (
     id uuid primary key default gen_random_uuid(),
     business_id uuid not null references public.businesses(id) on delete cascade,
@@ -158,6 +179,9 @@ create table if not exists public.invoices (
     subtotal_amount numeric(14,2) not null default 0,
     tax_amount numeric(14,2) not null default 0,
     total_amount numeric(14,2) not null default 0,
+    notes text,
+    accepted_payment_methods text,
+    payment_terms text,
     due_date date,
     issued_at date default current_date,
     created_by uuid references auth.users(id) on delete set null,

@@ -6,6 +6,8 @@ alter table public.demo_access_links enable row level security;
 alter table public.branches enable row level security;
 alter table public.business_members enable row level security;
 alter table public.business_settings enable row level security;
+alter table public.business_features enable row level security;
+alter table public.branch_features enable row level security;
 alter table public.tax_rates enable row level security;
 alter table public.chart_of_accounts enable row level security;
 alter table public.customers enable row level security;
@@ -47,6 +49,54 @@ as $$
           and is_active = true
     )
 $$;
+
+drop policy if exists "users can view their profile" on public.profiles;
+drop policy if exists "users can update their profile" on public.profiles;
+drop policy if exists "platform admins can view profiles" on public.profiles;
+drop policy if exists "business admins can view member profiles" on public.profiles;
+drop policy if exists "business admins can insert member profiles" on public.profiles;
+drop policy if exists "business admins can update member profiles" on public.profiles;
+drop policy if exists "platform admins can insert profiles" on public.profiles;
+drop policy if exists "platform admins can update profiles" on public.profiles;
+drop policy if exists "platform admins can view their platform record" on public.platform_admins;
+drop policy if exists "platform admins can insert platform records" on public.platform_admins;
+drop policy if exists "platform admins can update platform records" on public.platform_admins;
+drop policy if exists "platform admins can delete platform records" on public.platform_admins;
+drop policy if exists "public can submit demo requests" on public.demo_requests;
+drop policy if exists "platform admins can view demo requests" on public.demo_requests;
+drop policy if exists "platform admins can update demo requests" on public.demo_requests;
+drop policy if exists "platform admins can insert demo access links" on public.demo_access_links;
+drop policy if exists "platform admins can view demo access links" on public.demo_access_links;
+drop policy if exists "platform admins can update demo access links" on public.demo_access_links;
+drop policy if exists "public can verify valid demo links" on public.demo_access_links;
+drop policy if exists "public can consume valid demo links" on public.demo_access_links;
+drop policy if exists "members can view their businesses" on public.businesses;
+drop policy if exists "platform admins can manage businesses" on public.businesses;
+drop policy if exists "members can view their memberships" on public.business_members;
+drop policy if exists "admins can manage memberships" on public.business_members;
+drop policy if exists "business scoped settings" on public.business_settings;
+drop policy if exists "platform admins manage business features" on public.business_features;
+drop policy if exists "business members view business features" on public.business_features;
+drop policy if exists "platform admins manage branch features" on public.branch_features;
+drop policy if exists "business members view branch features" on public.branch_features;
+drop policy if exists "business scoped branches" on public.branches;
+drop policy if exists "business scoped tax rates" on public.tax_rates;
+drop policy if exists "business scoped accounts" on public.chart_of_accounts;
+drop policy if exists "business scoped customers" on public.customers;
+drop policy if exists "business scoped suppliers" on public.suppliers;
+drop policy if exists "business scoped products" on public.products;
+drop policy if exists "business scoped invoices" on public.invoices;
+drop policy if exists "business members can view invoice items" on public.invoice_items;
+drop policy if exists "business members can manage invoice items" on public.invoice_items;
+drop policy if exists "business scoped payments" on public.payments;
+drop policy if exists "business scoped expenses" on public.expenses;
+drop policy if exists "business scoped journal entries" on public.journal_entries;
+drop policy if exists "business members can view journal lines" on public.journal_entry_lines;
+drop policy if exists "business members can manage journal lines" on public.journal_entry_lines;
+drop policy if exists "members can view subscriptions" on public.subscriptions;
+drop policy if exists "platform admins can manage subscriptions" on public.subscriptions;
+drop policy if exists "business members can view audit logs" on public.audit_logs;
+drop policy if exists "system can insert audit logs" on public.audit_logs;
 
 create policy "users can view their profile"
 on public.profiles for select
@@ -203,6 +253,28 @@ create policy "business scoped settings"
 on public.business_settings for all
 using (business_id in (select public.current_business_ids()))
 with check (business_id in (select public.current_business_ids()));
+
+drop policy if exists "platform admins manage business features" on public.business_features;
+create policy "platform admins manage business features"
+on public.business_features for all
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
+
+drop policy if exists "business members view business features" on public.business_features;
+create policy "business members view business features"
+on public.business_features for select
+using (business_id in (select public.current_business_ids()));
+
+drop policy if exists "platform admins manage branch features" on public.branch_features;
+create policy "platform admins manage branch features"
+on public.branch_features for all
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
+
+drop policy if exists "business members view branch features" on public.branch_features;
+create policy "business members view branch features"
+on public.branch_features for select
+using (business_id in (select public.current_business_ids()));
 
 create policy "business scoped branches"
 on public.branches for all

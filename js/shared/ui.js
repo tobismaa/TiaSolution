@@ -6,6 +6,43 @@ import { getActiveBranchDetails } from "../core/data-access.js";
 let cachedServerOffsetMs = 0;
 let hasSyncedServerOffset = false;
 
+function bindGlobalModalDismissGuard() {
+    if (window.__TIA_GLOBAL_MODAL_DISMISS_GUARD_BOUND__) {
+        return;
+    }
+
+    window.__TIA_GLOBAL_MODAL_DISMISS_GUARD_BOUND__ = true;
+
+    document.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target) {
+            return;
+        }
+
+        const clickedOutsideDialog = target.classList.contains("business-modal")
+            || Boolean(target.closest(".business-modal__backdrop"));
+        if (!clickedOutsideDialog) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }, true);
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || !document.querySelector(".business-modal:not([hidden])")) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }, true);
+}
+
+bindGlobalModalDismissGuard();
+
 async function mountTopbarActiveBranchBadge(host, signOutButton) {
     if (!host || !signOutButton) {
         return;

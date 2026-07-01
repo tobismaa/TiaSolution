@@ -1,12 +1,14 @@
 import { getCurrentSessionContext } from "./core/session.js";
 import { getAccessBanner } from "./core/subscription.js";
-import { ROLES, ROLE_NAV, getDefaultRoute } from "./core/roles.js";
+import { ROLES, ROLE_NAV } from "./core/roles.js";
+import { getDefaultRouteForRoutes, getEnabledRoutesForRole } from "./core/features.js";
 import { ensureRoute } from "./core/guards.js";
 import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta } from "./shared/ui.js";
 import { createPageLoadingController } from "./shared/page-loading.js";
 import { renderHeadOfOperationsDashboard } from "./dashboards/head-of-operations-dashboard.js";
 import { renderCustomers, bindCustomersActions } from "./modules/customers/customers.js";
 import { renderInvoices, bindInvoicesActions } from "./modules/invoices/invoices.js";
+import { renderCustomerBilling } from "./modules/customer-billing/customer-billing.js";
 import { renderExpenses, bindExpensesActions } from "./modules/expenses/expenses.js";
 import { renderGlPosting } from "./modules/gl-posting/gl-posting.js";
 import { renderReports } from "./modules/reports/reports.js";
@@ -26,6 +28,8 @@ function setHash(route) {
 
 async function renderRoute(route, session) {
     switch (route) {
+        case "customerBilling":
+            return await renderCustomerBilling(session);
         case "customers":
             return { summary: [], content: await renderCustomers(), afterRender: bindCustomersActions };
         case "invoices":
@@ -68,7 +72,7 @@ export async function initHeadOfOperationsShell() {
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
 
-    const navItems = ROLE_NAV[ROLES.MANAGER];
+    const navItems = getEnabledRoutesForRole(ROLES.MANAGER, session.featureKeys);
     const banner = getAccessBanner(session);
     sidebarPeriod.textContent = session.currentPeriod;
     sidebarInsight.textContent = session.mode === "live"
@@ -80,7 +84,7 @@ export async function initHeadOfOperationsShell() {
     async function refresh() {
         loading.show();
         try {
-            const targetRoute = ensureRoute(ROLES.MANAGER, getRouteFromHash() || getDefaultRoute(ROLES.MANAGER));
+            const targetRoute = ensureRoute(ROLES.MANAGER, getRouteFromHash() || getDefaultRouteForRoutes(navItems), navItems);
             if (targetRoute !== getRouteFromHash()) {
                 setHash(targetRoute);
                 return;
@@ -128,7 +132,7 @@ export async function initHeadOfOperationsShell() {
     window.addEventListener("hashchange", refresh);
 
     if (!window.location.hash) {
-        setHash(getDefaultRoute(ROLES.MANAGER));
+        setHash(getDefaultRouteForRoutes(navItems));
     }
 
     await refresh();

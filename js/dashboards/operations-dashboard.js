@@ -1,5 +1,6 @@
 import { formatCurrency } from "../core/utils.js";
 import { getCurrentSessionContext } from "../core/session.js";
+import { isFeatureEnabled } from "../core/features.js";
 import { getSupabaseClient } from "../core/supabase-client.js";
 import { getActiveBranchDetails } from "../core/data-access.js";
 import {
@@ -758,12 +759,15 @@ function bindOperationsWorkspace(container, refresh) {
 
 export async function renderOperationsDashboard() {
     const metrics = await getOperationsMetrics();
+    const session = await getCurrentSessionContext();
+    const summary = [
+        { label: "GL Postings (Month)", value: String(metrics.glPostingsMonth), note: "live data", tone: "up", feature: "glPosting" },
+        { label: "Posted Value (Month)", value: formatCurrency(metrics.glPostedValueMonth), note: "debit side total", tone: "up", feature: "glPosting" },
+        { label: "Pending Expense Approvals", value: String(metrics.expensesPending), note: "awaiting Head of Operations", tone: "warn", feature: "expenses" }
+    ].filter((card) => isFeatureEnabled(session?.featureKeys, card.feature, session?.role));
+
     return {
-        summary: [
-            { label: "GL Postings (Month)", value: String(metrics.glPostingsMonth), note: "live data", tone: "up" },
-            { label: "Posted Value (Month)", value: formatCurrency(metrics.glPostedValueMonth), note: "debit side total", tone: "up" },
-            { label: "Pending Expense Approvals", value: String(metrics.expensesPending), note: "awaiting Head of Operations", tone: "warn" }
-        ],
+        summary,
         content: `
             <section class="hero-card">
                 <div>

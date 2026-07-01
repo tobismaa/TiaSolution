@@ -1,15 +1,18 @@
 import {
     deleteBusinessBranch,
+    getBusinessBranchFeatureAccess,
     getBusinessById,
     getBusinessBranches,
     getBusinesses,
     onboardBusinessClient,
     setBusinessBranchActive,
+    updateBusinessBranchFeatureAccess,
     updateBusinessDetails,
     updateBusinessSubscriptionState
 } from "./businesses-service.js";
 import { getOrganizationUsersForPlatform } from "../users/users-service.js";
 import { createTable, formatRole, formatStatusTone } from "../../core/utils.js";
+import { DASHBOARD_FEATURE_GROUPS, normalizeFeatureKeys } from "../../core/features.js";
 
 function showPageLoading() {
     window.TIA_PAGE_LOADING?.show?.();
@@ -79,6 +82,134 @@ function populateBusinessDetailsForm(form, business) {
     if (customMonthsInput) {
         customMonthsInput.required = isCustom;
     }
+
+    syncFeaturePicker(form, business.featureKeys || []);
+}
+
+function getSelectedFeatureKeys(container) {
+    return normalizeFeatureKeys(
+        Array.from(container?.querySelectorAll("[data-feature-order-card] [data-business-feature-key]:checked") || [])
+            .map((input) => input.value)
+    );
+}
+
+function syncFeaturePicker(container, featureKeys = []) {
+    const enabled = new Set(normalizeFeatureKeys(featureKeys));
+    container?.querySelectorAll("[data-business-feature-key]").forEach((input) => {
+        input.checked = enabled.has(input.value);
+    });
+}
+
+function activateFeatureDashboard(container, dashboardKey) {
+    const picker = container?.closest?.("[data-business-feature-picker]") || container;
+    if (!picker) {
+        return;
+    }
+
+    picker.querySelectorAll("[data-feature-dashboard-tab]").forEach((tab) => {
+        const isActive = tab.getAttribute("data-feature-dashboard-tab") === dashboardKey;
+        tab.classList.toggle("is-active", isActive);
+        tab.setAttribute("aria-selected", String(isActive));
+    });
+
+    picker.querySelectorAll("[data-feature-dashboard-panel]").forEach((panel) => {
+        panel.hidden = panel.getAttribute("data-feature-dashboard-panel") !== dashboardKey;
+    });
+}
+
+function moveFeatureCard(control, direction) {
+    const card = control?.closest?.("[data-feature-order-card]");
+    if (!card) {
+        return;
+    }
+
+    if (direction === "up") {
+        const previous = card.previousElementSibling;
+        if (previous) {
+            card.parentElement.insertBefore(card, previous);
+        }
+        return;
+    }
+
+    const next = card.nextElementSibling;
+    if (next) {
+        card.parentElement.insertBefore(next, card);
+    }
+}
+
+function renderFeaturePicker(selectedFeatureKeys = [], options = {}) {
+    const enabled = new Set(normalizeFeatureKeys(selectedFeatureKeys));
+    const selectedOrder = new Map(normalizeFeatureKeys(selectedFeatureKeys).map((featureKey, index) => [featureKey, index]));
+    const allowed = Array.isArray(options.allowedFeatureKeys)
+        ? new Set(normalizeFeatureKeys(options.allowedFeatureKeys))
+        : null;
+    const firstDashboard = DASHBOARD_FEATURE_GROUPS[0]?.key || "";
+    const eyebrow = options.eyebrow || "Dashboard Access";
+    const title = options.title || "Organization dashboard functions";
+    return `
+        <section class="business-feature-picker" data-business-feature-picker>
+            <div>
+                <p class="eyebrow">${eyebrow}</p>
+                <h4>${title}</h4>
+            </div>
+            <div class="business-feature-tabs" role="tablist" aria-label="Dashboard access">
+                ${DASHBOARD_FEATURE_GROUPS.map((group) => `
+                    <button
+                        class="business-feature-tab ${group.key === firstDashboard ? "is-active" : ""}"
+                        type="button"
+                        role="tab"
+                        aria-selected="${String(group.key === firstDashboard)}"
+                        data-feature-dashboard-tab="${group.key}"
+                    >
+                        ${group.label}
+                    </button>
+                `).join("")}
+            </div>
+            <div class="business-feature-panels">
+                ${DASHBOARD_FEATURE_GROUPS.map((group) => `
+                    <div class="business-feature-panel" data-feature-dashboard-panel="${group.key}" ${group.key === firstDashboard ? "" : "hidden"}>
+                        <div class="business-feature-panel-head">
+                            <strong>${group.label}</strong>
+                            <small>${group.description}</small>
+                        </div>
+                        <div class="business-feature-grid">
+                            ${[...group.features].sort((left, right) => {
+                                const leftOrder = selectedOrder.get(left.accessKey) ?? Number.MAX_SAFE_INTEGER;
+                                const rightOrder = selectedOrder.get(right.accessKey) ?? Number.MAX_SAFE_INTEGER;
+                                if (leftOrder !== rightOrder) {
+                                    return leftOrder - rightOrder;
+                                }
+                                return group.features.indexOf(left) - group.features.indexOf(right);
+                            }).map((feature) => {
+                                const isAllowed = !allowed || allowed.has(feature.accessKey);
+                                return `
+                                <div class="business-feature-card" data-feature-order-card>
+                                    <label class="business-feature-card__label">
+                                        <input
+                                            type="checkbox"
+                                            value="${feature.accessKey}"
+                                            data-business-feature-key
+                                            ${enabled.has(feature.accessKey) && isAllowed ? "checked" : ""}
+                                            ${isAllowed ? "" : "disabled"}
+                                        >
+                                        <span>
+                                            <strong>${feature.label}</strong>
+                                            <small>${isAllowed ? feature.description : "Disabled at organization level."}</small>
+                                        </span>
+                                    </label>
+                                    <div class="business-feature-card__order" aria-label="Tab order controls">
+                                        <button class="icon-btn" type="button" data-feature-move="up" title="Move up" aria-label="Move ${feature.label} up">↑</button>
+                                        <button class="icon-btn" type="button" data-feature-move="down" title="Move down" aria-label="Move ${feature.label} down">↓</button>
+                                    </div>
+                                </div>
+                            `;
+                            }).join("")}
+                        </div>
+                    </div>
+                `).join("")}
+            </div>
+        </section>
+    `;
 }
 
 function formatBusinessPeriod(business) {
@@ -278,6 +409,9 @@ function renderBranchManagementSection(businessId, branches) {
                         <button class="btn btn-secondary" type="button" data-branch-business-id="${businessId}" data-branch-id="${branch.id}" data-branch-active="${String(branch.isActive)}">
                             ${branch.isActive ? "Deactivate" : "Activate"}
                         </button>
+                        <button class="btn btn-secondary" type="button" data-branch-access-business-id="${businessId}" data-branch-access-id="${branch.id}" data-branch-access-name="${branch.name || "Branch"}">
+                            Access
+                        </button>
                         <button class="btn btn-secondary" type="button" data-branch-delete-business-id="${businessId}" data-branch-delete-id="${branch.id}">
                             Delete
                         </button>
@@ -311,6 +445,37 @@ function renderBranchManagementSection(businessId, branches) {
             </div>
             <p class="muted mt-12" data-branch-action-status>Use activate, deactivate, or delete to manage organization branches.</p>
         </section>
+    `;
+}
+
+function renderBranchAccessModalContent(branchName, businessId, branchId, access) {
+    const hasOverrides = Boolean(access?.hasOverrides);
+    return `
+        <form class="form-grid branch-access-form" data-branch-access-form>
+            <input type="hidden" name="business_id" value="${businessId}">
+            <input type="hidden" name="branch_id" value="${branchId}">
+            <div>
+                <p class="eyebrow">Branch access</p>
+                <h3>${branchName || "Branch"}</h3>
+                <p class="muted">
+                    ${hasOverrides
+                        ? "This branch has its own selected dashboard functions."
+                        : "This branch currently follows the organization access. Save here to set branch-specific access."}
+                </p>
+            </div>
+            ${renderFeaturePicker(access?.featureKeys || [], {
+                eyebrow: "Branch Dashboard Access",
+                title: "Branch dashboard functions",
+                allowedFeatureKeys: access?.organizationFeatureKeys || []
+            })}
+            <div class="button-row business-details-actions">
+                <button class="btn btn-primary" type="submit" data-branch-access-save>
+                    <span class="btn-label">Save Branch Access</span>
+                    <span class="spinner" aria-hidden="true"></span>
+                </button>
+            </div>
+            <p class="muted branch-access-save-status">Edit branch access and save your changes.</p>
+        </form>
     `;
 }
 
@@ -388,6 +553,7 @@ function renderBusinessDetailsModalContent(business, branches = []) {
             <p class="muted business-details-end-preview" data-business-end-preview>
                 End date updates automatically for monthly, quarterly, yearly, and custom periods.
             </p>
+            ${renderFeaturePicker(business.featureKeys || [])}
             <div class="button-row business-details-actions">
                 <button class="btn btn-secondary business-detail-toggle-btn" type="button" data-business-id="${business.id}" data-business-status="${business.status}">
                     ${getToggleLabel(business.status)}
@@ -512,6 +678,7 @@ export async function renderBusinesses() {
                             <p class="muted business-details-end-preview" data-business-end-preview>
                                 End date updates automatically for monthly, quarterly, yearly, and custom periods.
                             </p>
+                            ${renderFeaturePicker([])}
                             <div class="button-row">
                                 <button class="btn btn-primary" type="submit" data-business-submit>
                                     <span class="btn-label">Create Organization</span>
@@ -537,6 +704,21 @@ export async function renderBusinesses() {
                         </div>
                     </div>
                 </div>
+                <div class="business-modal" data-branch-access-modal hidden>
+                    <div class="business-modal__backdrop" data-branch-access-close></div>
+                    <div class="business-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="branchAccessTitle">
+                        <div class="business-modal__head">
+                            <div>
+                                <p class="eyebrow">Branch dashboard functions</p>
+                                <h3 id="branchAccessTitle">Branch access</h3>
+                            </div>
+                            <button class="icon-btn business-modal__close" type="button" aria-label="Close modal" data-branch-access-close>&times;</button>
+                        </div>
+                        <div class="business-details-body" data-branch-access-body>
+                            <p class="muted">Select a branch to manage access.</p>
+                        </div>
+                    </div>
+                </div>
                 <div class="business-modal" data-business-users-modal hidden>
                     <div class="business-modal__backdrop" data-business-users-close></div>
                     <div class="business-modal__dialog gl-statement-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="businessUsersTitle">
@@ -559,6 +741,8 @@ export async function renderBusinesses() {
             const modal = pageContent.querySelector("[data-business-modal]");
             const detailsModal = pageContent.querySelector("[data-business-details-modal]");
             const detailsBody = pageContent.querySelector("[data-business-details-body]");
+            const branchAccessModal = pageContent.querySelector("[data-branch-access-modal]");
+            const branchAccessBody = pageContent.querySelector("[data-branch-access-body]");
             const usersModal = pageContent.querySelector("[data-business-users-modal]");
             const usersBody = pageContent.querySelector("[data-business-users-body]");
             const form = pageContent.querySelector("#businessOnboardForm");
@@ -600,6 +784,15 @@ export async function renderBusinesses() {
                 }
             };
 
+            const loadBranchAccessPanel = async (businessId, branchId, branchName) => {
+                if (!businessId || !branchId || !branchAccessBody) {
+                    return;
+                }
+
+                const access = await getBusinessBranchFeatureAccess(businessId, branchId);
+                branchAccessBody.innerHTML = renderBranchAccessModalContent(branchName, businessId, branchId, access);
+            };
+
             openButton?.addEventListener("click", () => {
                 showPageLoading();
                 requestAnimationFrame(() => {
@@ -616,6 +809,10 @@ export async function renderBusinesses() {
                 control.addEventListener("click", () => closeBusinessModal(detailsModal));
             });
 
+            branchAccessModal?.querySelectorAll(".business-modal__close[data-branch-access-close]").forEach((control) => {
+                control.addEventListener("click", () => closeBusinessModal(branchAccessModal));
+            });
+
             usersModal?.querySelectorAll(".business-modal__close[data-business-users-close]").forEach((control) => {
                 control.addEventListener("click", () => closeBusinessModal(usersModal));
             });
@@ -625,6 +822,18 @@ export async function renderBusinesses() {
             syncPeriodPreview(form);
 
             pageContent.addEventListener("click", async (event) => {
+                const moveButton = event.target.closest("[data-feature-move]");
+                if (moveButton) {
+                    moveFeatureCard(moveButton, moveButton.getAttribute("data-feature-move"));
+                    return;
+                }
+
+                const dashboardTab = event.target.closest("[data-feature-dashboard-tab]");
+                if (dashboardTab) {
+                    activateFeatureDashboard(dashboardTab, dashboardTab.getAttribute("data-feature-dashboard-tab"));
+                    return;
+                }
+
                 const viewButton = event.target.closest("[data-business-view-id]");
                 if (viewButton) {
                     const businessId = viewButton.getAttribute("data-business-view-id");
@@ -664,6 +873,30 @@ export async function renderBusinesses() {
                         usersBody.innerHTML = renderOrganizationUsersList(businessName, users);
                     } catch (error) {
                         usersBody.innerHTML = `<p class="muted">${error?.message || "Unable to load organization users right now."}</p>`;
+                    } finally {
+                        hidePageLoading();
+                    }
+
+                    return;
+                }
+
+                const branchAccessButton = event.target.closest("[data-branch-access-id][data-branch-access-business-id]");
+                if (branchAccessButton) {
+                    const businessId = branchAccessButton.getAttribute("data-branch-access-business-id");
+                    const branchId = branchAccessButton.getAttribute("data-branch-access-id");
+                    const branchName = branchAccessButton.getAttribute("data-branch-access-name") || "Branch";
+                    if (!businessId || !branchId || !branchAccessModal || !branchAccessBody) {
+                        return;
+                    }
+
+                    branchAccessBody.innerHTML = `<p class="muted">Loading branch access...</p>`;
+                    showPageLoading();
+                    openBusinessModal(branchAccessModal);
+
+                    try {
+                        await loadBranchAccessPanel(businessId, branchId, branchName);
+                    } catch (error) {
+                        branchAccessBody.innerHTML = `<p class="muted">${error?.message || "Unable to load branch access right now."}</p>`;
                     } finally {
                         hidePageLoading();
                     }
@@ -773,6 +1006,51 @@ export async function renderBusinesses() {
             });
 
             pageContent.addEventListener("submit", async (event) => {
+                const branchAccessForm = event.target.closest("[data-branch-access-form]");
+                if (branchAccessForm) {
+                    event.preventDefault();
+                    const saveButton = branchAccessForm.querySelector("[data-branch-access-save]");
+                    const saveStatus = branchAccessForm.querySelector(".branch-access-save-status");
+                    const activeDashboardKey = branchAccessForm
+                        .querySelector("[data-feature-dashboard-tab].is-active")
+                        ?.getAttribute("data-feature-dashboard-tab") || "";
+                    const data = new FormData(branchAccessForm);
+                    const businessId = String(data.get("business_id") || "").trim();
+                    const branchId = String(data.get("branch_id") || "").trim();
+                    const branchName = branchAccessForm.querySelector("h3")?.textContent || "Branch";
+                    if (!businessId || !branchId || !saveButton) {
+                        return;
+                    }
+
+                    setSubmittingState(saveButton, true);
+                    if (saveStatus) {
+                        saveStatus.textContent = "Saving branch access...";
+                    }
+                    showPageLoading();
+
+                    try {
+                        await updateBusinessBranchFeatureAccess(businessId, branchId, getSelectedFeatureKeys(branchAccessForm));
+                        await loadBranchAccessPanel(businessId, branchId, branchName);
+                        const refreshedForm = branchAccessBody?.querySelector("[data-branch-access-form]");
+                        if (activeDashboardKey && refreshedForm) {
+                            activateFeatureDashboard(refreshedForm, activeDashboardKey);
+                        }
+                        const refreshedSaveStatus = branchAccessBody?.querySelector(".branch-access-save-status");
+                        if (refreshedSaveStatus) {
+                            refreshedSaveStatus.textContent = "Branch access saved.";
+                        }
+                    } catch (error) {
+                        if (saveStatus) {
+                            saveStatus.textContent = error?.message || "Unable to save branch access right now.";
+                        }
+                    } finally {
+                        setSubmittingState(saveButton, false);
+                        hidePageLoading();
+                    }
+
+                    return;
+                }
+
                 const detailsForm = event.target.closest("[data-business-details-form]");
                 if (!detailsForm) {
                     return;
@@ -785,6 +1063,9 @@ export async function renderBusinesses() {
                 }
 
                 const saveStatus = detailsForm.querySelector(".business-details-save-status");
+                const activeDashboardKey = detailsForm
+                    .querySelector("[data-feature-dashboard-tab].is-active")
+                    ?.getAttribute("data-feature-dashboard-tab") || "";
                 const data = new FormData(detailsForm);
                 const businessId = String(data.get("business_id") || "").trim();
                 if (!businessId) {
@@ -805,16 +1086,18 @@ export async function renderBusinesses() {
                         max_branches: Number(data.get("max_branches") || 0),
                         billing_cycle: String(data.get("billing_cycle") || "monthly").trim(),
                         billing_months: Number(data.get("billing_months") || 0),
-                        subscription_status: String(data.get("subscription_status") || "active").trim()
+                        subscription_status: String(data.get("subscription_status") || "active").trim(),
+                        featureKeys: getSelectedFeatureKeys(detailsForm)
                     });
 
                     await loadBusinessDetailsPanel(businessId);
-
-                    if (typeof refresh === "function") {
-                        await refresh();
+                    const refreshedForm = detailsBody?.querySelector("[data-business-details-form]");
+                    if (activeDashboardKey && refreshedForm) {
+                        activateFeatureDashboard(refreshedForm, activeDashboardKey);
                     }
-                    if (saveStatus) {
-                        saveStatus.textContent = "Changes saved.";
+                    const refreshedSaveStatus = detailsBody?.querySelector(".business-details-save-status");
+                    if (refreshedSaveStatus) {
+                        refreshedSaveStatus.textContent = "Changes saved.";
                     }
                 } catch (error) {
                     if (saveStatus) {
@@ -846,7 +1129,8 @@ export async function renderBusinesses() {
                         max_branches: Number(data.get("max_branches") || 0),
                         billing_cycle: String(data.get("billing_cycle") || "monthly").trim(),
                         billing_months: Number(data.get("billing_months") || 0),
-                        subscription_status: String(data.get("subscription_status") || "active").trim()
+                        subscription_status: String(data.get("subscription_status") || "active").trim(),
+                        featureKeys: getSelectedFeatureKeys(form)
                     });
 
                     form.reset();

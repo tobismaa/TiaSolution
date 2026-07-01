@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "../../core/supabase-client.js";
+import { DASHBOARD_FEATURE_GROUPS, FEATURE_DEFINITIONS, LEGACY_FEATURE_KEYS, normalizeFeatureKeys } from "../../core/features.js";
 
 function slugify(value) {
     return String(value || "")
@@ -56,6 +57,170 @@ function isMissingColumnError(error, columnName) {
     const message = String(error?.message || "").toLowerCase();
     const details = String(error?.details || "").toLowerCase();
     return code === "PGRST204" || message.includes(columnName) || details.includes(columnName);
+}
+
+function buildFeatureOrderMap(featureKeys) {
+    return new Map(normalizeFeatureKeys(featureKeys).map((featureKey, index) => [featureKey, index + 1]));
+}
+
+function sortFeatureRows(rows = []) {
+    return [...(rows || [])].sort((left, right) => {
+        const leftOrder = Number.isFinite(Number(left.sort_order)) ? Number(left.sort_order) : Number.MAX_SAFE_INTEGER;
+        const rightOrder = Number.isFinite(Number(right.sort_order)) ? Number(right.sort_order) : Number.MAX_SAFE_INTEGER;
+        return leftOrder - rightOrder;
+    });
+}
+
+function isMissingFeatureTableError(error) {
+    const code = String(error?.code || "").toUpperCase();
+    const message = String(error?.message || "").toLowerCase();
+    return code === "42P01" || message.includes("business_features") || message.includes("branch_features");
+}
+
+async function getBusinessFeatureKeysFromDb(supabase, businessId) {
+    let { data, error } = await supabase
+        .from("business_features")
+        .select("feature_key, is_enabled, sort_order")
+        .eq("business_id", businessId)
+        .order("sort_order", { ascending: true, nullsFirst: false });
+
+    if (error && isMissingColumnError(error, "sort_order")) {
+        const fallback = await supabase
+            .from("business_features")
+            .select("feature_key, is_enabled")
+            .eq("business_id", businessId);
+        data = fallback.data;
+        error = fallback.error;
+    }
+
+    if (error) {
+        if (isMissingFeatureTableError(error)) {
+            return [];
+        }
+        throw error;
+    }
+
+    return normalizeFeatureKeys(sortFeatureRows(data || [])
+        .filter((item) => item.is_enabled !== false)
+        .map((item) => item.feature_key));
+}
+
+async function saveBusinessFeatureKeys(supabase, businessId, featureKeys) {
+    const enabled = new Set(normalizeFeatureKeys(featureKeys));
+    const orderMap = buildFeatureOrderMap(featureKeys);
+    const dashboardFeatureKeys = DASHBOARD_FEATURE_GROUPS.flatMap((group) => group.features.map((feature) => feature.accessKey));
+    const legacyDashboardFeatureKeys = DASHBOARD_FEATURE_GROUPS.flatMap((group) =>
+        LEGACY_FEATURE_KEYS.map((featureKey) => `${group.role}:${featureKey}`)
+    );
+    const rows = [
+        ...FEATURE_DEFINITIONS.map((feature) => ({
+            business_id: businessId,
+            feature_key: feature.key,
+            is_enabled: false,
+            sort_order: null
+        })),
+        ...LEGACY_FEATURE_KEYS.map((featureKey) => ({
+            business_id: businessId,
+            feature_key: featureKey,
+            is_enabled: false,
+            sort_order: null
+        })),
+        ...dashboardFeatureKeys.map((featureKey) => ({
+            business_id: businessId,
+            feature_key: featureKey,
+            is_enabled: enabled.has(featureKey),
+            sort_order: enabled.has(featureKey) ? orderMap.get(featureKey) : null
+        })),
+        ...legacyDashboardFeatureKeys.map((featureKey) => ({
+            business_id: businessId,
+            feature_key: featureKey,
+            is_enabled: false,
+            sort_order: null
+        }))
+    ];
+
+    let { error } = await supabase
+        .from("business_features")
+        .upsert(rows, { onConflict: "business_id,feature_key" });
+
+    if (error && isMissingColumnError(error, "sort_order")) {
+        throw new Error("Feature order column is missing. Run sql/add-feature-sort-order.sql.");
+    }
+
+    if (error) {
+        if (isMissingFeatureTableError(error)) {
+            throw new Error("Feature access table is missing. Run sql/add-business-features.sql.");
+        }
+        throw error;
+    }
+}
+
+async function getBranchFeatureRows(supabase, businessId, branchId) {
+    let { data, error } = await supabase
+        .from("branch_features")
+        .select("feature_key, is_enabled, sort_order")
+        .eq("business_id", businessId)
+        .eq("branch_id", branchId)
+        .order("sort_order", { ascending: true, nullsFirst: false });
+
+    if (error && isMissingColumnError(error, "sort_order")) {
+        const fallback = await supabase
+            .from("branch_features")
+            .select("feature_key, is_enabled")
+            .eq("business_id", businessId)
+            .eq("branch_id", branchId);
+        data = fallback.data;
+        error = fallback.error;
+    }
+
+    if (error) {
+        if (isMissingFeatureTableError(error)) {
+            throw new Error("Branch feature access table is missing. Run sql/add-branch-features.sql.");
+        }
+        throw error;
+    }
+
+    return sortFeatureRows(data || []);
+}
+
+async function saveBranchFeatureKeys(supabase, businessId, branchId, featureKeys) {
+    const enabled = new Set(normalizeFeatureKeys(featureKeys));
+    const orderMap = buildFeatureOrderMap(featureKeys);
+    const dashboardFeatureKeys = DASHBOARD_FEATURE_GROUPS.flatMap((group) => group.features.map((feature) => feature.accessKey));
+    const legacyDashboardFeatureKeys = DASHBOARD_FEATURE_GROUPS.flatMap((group) =>
+        LEGACY_FEATURE_KEYS.map((featureKey) => `${group.role}:${featureKey}`)
+    );
+    const rows = [
+        ...dashboardFeatureKeys.map((featureKey) => ({
+            business_id: businessId,
+            branch_id: branchId,
+            feature_key: featureKey,
+            is_enabled: enabled.has(featureKey),
+            sort_order: enabled.has(featureKey) ? orderMap.get(featureKey) : null
+        })),
+        ...legacyDashboardFeatureKeys.map((featureKey) => ({
+            business_id: businessId,
+            branch_id: branchId,
+            feature_key: featureKey,
+            is_enabled: false,
+            sort_order: null
+        }))
+    ];
+
+    let { error } = await supabase
+        .from("branch_features")
+        .upsert(rows, { onConflict: "business_id,branch_id,feature_key" });
+
+    if (error && isMissingColumnError(error, "sort_order")) {
+        throw new Error("Feature order column is missing. Run sql/add-feature-sort-order.sql.");
+    }
+
+    if (error) {
+        if (isMissingFeatureTableError(error)) {
+            throw new Error("Branch feature access table is missing. Run sql/add-branch-features.sql.");
+        }
+        throw error;
+    }
 }
 
 function normalizeMaxBranches(value) {
@@ -299,8 +464,15 @@ export async function getBusinessById(businessId) {
         return null;
     }
 
-    const subscriptions = await fetchSubscriptionsByBusinessIds(supabase, [business.id]);
-    return mapBusinessRow(business, subscriptions[0]);
+    const [subscriptions, featureKeys] = await Promise.all([
+        fetchSubscriptionsByBusinessIds(supabase, [business.id]),
+        getBusinessFeatureKeysFromDb(supabase, business.id)
+    ]);
+
+    return {
+        ...mapBusinessRow(business, subscriptions[0]),
+        featureKeys
+    };
 }
 
 export async function getBusinesses() {
@@ -432,6 +604,8 @@ export async function onboardBusinessClient(payload) {
     if (subscriptionError) {
         throw subscriptionError;
     }
+
+    await saveBusinessFeatureKeys(supabase, business.id, payload.featureKeys || []);
 
     return { business };
 }
@@ -565,6 +739,10 @@ export async function updateBusinessDetails(businessId, payload) {
         throw subscriptionError;
     }
 
+    if (Array.isArray(payload.featureKeys)) {
+        await saveBusinessFeatureKeys(supabase, businessId, payload.featureKeys);
+    }
+
     return true;
 }
 
@@ -595,6 +773,52 @@ export async function getBusinessBranches(businessId) {
     }
 
     return (data || []).map(mapBranchRow);
+}
+
+export async function getBusinessBranchFeatureAccess(businessId, branchId) {
+    const supabase = getSupabaseClient();
+    if (!supabase || !businessId || !branchId) {
+        return { featureKeys: [], organizationFeatureKeys: [], hasOverrides: false };
+    }
+
+    const [businessFeatureKeys, branchRows] = await Promise.all([
+        getBusinessFeatureKeysFromDb(supabase, businessId),
+        getBranchFeatureRows(supabase, businessId, branchId)
+    ]);
+
+    if (!branchRows.length) {
+        return {
+            featureKeys: businessFeatureKeys,
+            organizationFeatureKeys: businessFeatureKeys,
+            hasOverrides: false
+        };
+    }
+
+    const branchFeatureKeys = new Set(normalizeFeatureKeys(branchRows
+        .filter((item) => item.is_enabled !== false)
+        .map((item) => item.feature_key)));
+    const businessFeatureKeySet = new Set(businessFeatureKeys);
+
+    return {
+        featureKeys: normalizeFeatureKeys(branchRows
+            .filter((item) => item.is_enabled !== false)
+            .map((item) => item.feature_key))
+            .filter((featureKey) => branchFeatureKeys.has(featureKey) && businessFeatureKeySet.has(featureKey)),
+        organizationFeatureKeys: businessFeatureKeys,
+        hasOverrides: true
+    };
+}
+
+export async function updateBusinessBranchFeatureAccess(businessId, branchId, featureKeys) {
+    const supabase = getSupabaseClient();
+    if (!supabase || !businessId || !branchId) {
+        throw new Error("Branch context is unavailable.");
+    }
+
+    const businessFeatureKeys = new Set(await getBusinessFeatureKeysFromDb(supabase, businessId));
+    const allowedFeatureKeys = normalizeFeatureKeys(featureKeys).filter((featureKey) => businessFeatureKeys.has(featureKey));
+    await saveBranchFeatureKeys(supabase, businessId, branchId, allowedFeatureKeys);
+    return true;
 }
 
 export async function setBusinessBranchActive(businessId, branchId, isActive) {

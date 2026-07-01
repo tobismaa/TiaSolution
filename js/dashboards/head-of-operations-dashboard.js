@@ -2,6 +2,7 @@ import { formatCurrency } from "../core/utils.js";
 import { getCurrentSessionContext } from "../core/session.js";
 import { getSupabaseClient } from "../core/supabase-client.js";
 import { getActiveBranchDetails } from "../core/data-access.js";
+import { isFeatureEnabled } from "../core/features.js";
 
 function toAmount(value) {
     const amount = Number(value || 0);
@@ -173,13 +174,15 @@ async function getManagerMetrics() {
 
 export async function renderHeadOfOperationsDashboard() {
     const metrics = await getManagerMetrics();
+    const session = await getCurrentSessionContext();
+    const summary = [
+        { label: "Team Queue", value: String(metrics.pendingApprovals), note: "items to review", tone: "warn", feature: "customerBilling" },
+        { label: "Due This Week", value: formatCurrency(metrics.dueThisWeekValue), note: "collections expected", tone: "up", feature: "customerBilling" },
+        { label: "Spend Watch", value: formatCurrency(metrics.spendWatchValue), note: "approved month spend", tone: "down", feature: "expenses" }
+    ].filter((card) => isFeatureEnabled(session?.featureKeys, card.feature, session?.role));
 
     return {
-        summary: [
-            { label: "Team Queue", value: String(metrics.pendingApprovals), note: "items to review", tone: "warn" },
-            { label: "Due This Week", value: formatCurrency(metrics.dueThisWeekValue), note: "collections expected", tone: "up" },
-            { label: "Spend Watch", value: formatCurrency(metrics.spendWatchValue), note: "approved month spend", tone: "down" }
-        ],
+        summary,
         content: `
             <section class="hero-card">
                 <div>

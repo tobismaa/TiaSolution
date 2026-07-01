@@ -12,6 +12,7 @@ import { renderAuditorDashboard, renderAuditorTrialBalance } from "../dashboards
 import { renderSuperAdminDashboard } from "../dashboards/super-admin-dashboard.js";
 import { renderCustomers, bindCustomersActions } from "../modules/customers/customers.js";
 import { renderInvoices, bindInvoicesActions } from "../modules/invoices/invoices.js";
+import { renderCustomerBilling } from "../modules/customer-billing/customer-billing.js";
 import { renderExpenses, bindExpensesActions } from "../modules/expenses/expenses.js";
 import { renderGlPosting } from "../modules/gl-posting/gl-posting.js";
 import { renderPayroll } from "../modules/payroll/payroll.js";
@@ -86,6 +87,7 @@ async function renderRoute(route, session) {
         case "trialBalance": return await renderAuditorTrialBalance();
         case "glPosting": return await renderGlPosting();
         case "branches": return await renderBranches();
+        case "customerBilling": return await renderCustomerBilling(session);
         case "customers": return { summary: [], content: await renderCustomers(), afterRender: bindCustomersActions };
         case "invoices": return { summary: [], content: await renderInvoices(), afterRender: bindInvoicesActions };
         case "expenses": return { summary: [], content: await renderExpenses(), afterRender: bindExpensesActions };
