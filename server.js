@@ -57,7 +57,16 @@ function handleHealthCheck(response) {
     sendJson(response, 200, {
         ok: true,
         resendConfigured: Boolean(resend),
-        resendFromDomain: getSenderDomain() || null
+        resendFromDomain: getSenderDomain() || null,
+        supabaseHost: (() => {
+            try {
+                return new URL(supabaseUrl).host;
+            } catch {
+                return null;
+            }
+        })(),
+        supabaseKeyPrefix: supabaseAnonKey ? supabaseAnonKey.slice(0, 13) : null,
+        supabaseKeyLength: supabaseAnonKey.length
     });
 }
 
