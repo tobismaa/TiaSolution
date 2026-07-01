@@ -36,6 +36,24 @@ function sendJson(response, statusCode, payload) {
     response.end(JSON.stringify(payload));
 }
 
+function getSenderDomain() {
+    const match = /<[^@<>]+@([^<>]+)>/.exec(resendFromEmail);
+    if (match?.[1]) {
+        return match[1];
+    }
+
+    const plainMatch = /@([^\s>]+)/.exec(resendFromEmail);
+    return plainMatch?.[1] || "";
+}
+
+function handleHealthCheck(response) {
+    sendJson(response, 200, {
+        ok: true,
+        resendConfigured: Boolean(resend),
+        resendFromDomain: getSenderDomain() || null
+    });
+}
+
 async function readRequestJson(request) {
     let body = "";
     for await (const chunk of request) {
@@ -103,6 +121,7 @@ async function handleSecurityNotification(request, response) {
     }
 
     if (!resend) {
+        console.warn("[security-notification] Resend is not configured.");
         sendJson(response, 503, { error: "Resend is not configured. Set RESEND_API_KEY." });
         return;
     }
@@ -122,12 +141,14 @@ async function handleSecurityNotification(request, response) {
 
     const user = await getAuthenticatedUser(getBearerToken(request));
     if (!user?.id || !user?.email) {
+        console.warn("[security-notification] Rejected unauthenticated request.");
         sendJson(response, 401, { error: "Authentication is required." });
         return;
     }
 
     const rateKey = `${user.id}:${payload.type}`;
     if (!canNotify(rateKey)) {
+        console.log(`[security-notification] Skipped duplicate notification for ${user.email}.`);
         sendJson(response, 202, { ok: true, skipped: "rate_limited" });
         return;
     }
@@ -168,10 +189,12 @@ async function handleSecurityNotification(request, response) {
     });
 
     if (error) {
+        console.error(`[security-notification] Resend failed for ${user.email}:`, error);
         sendJson(response, 502, { error: error.message || "Unable to send email." });
         return;
     }
 
+    console.log(`[security-notification] Sent blocked-login alert to ${user.email}.`);
     sendJson(response, 200, { ok: true, id: data?.id || null });
 }
 
@@ -197,6 +220,11 @@ async function serveStatic(request, response) {
 const server = createServer(async (request, response) => {
     try {
         const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+        if (url.pathname === "/api/health") {
+            handleHealthCheck(response);
+            return;
+        }
+
         if (url.pathname === "/api/security-notification") {
             await handleSecurityNotification(request, response);
             return;
