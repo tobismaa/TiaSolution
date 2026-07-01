@@ -7,7 +7,7 @@ import { renderSuperAdminDashboard } from "./dashboards/super-admin-dashboard.js
 import { renderBusinesses } from "./modules/businesses/businesses.js";
 import { renderDemoRequests, bindDemoRequestActions } from "./modules/demo-requests/demo-requests.js";
 import { renderSubscriptions } from "./modules/subscriptions/subscriptions.js";
-import { renderSettings } from "./modules/settings/settings.js";
+import { bindSettingsActions, renderSettings } from "./modules/settings/settings.js";
 import { ensureLoginSessionClaimed, signOutUser, startLoginAttemptMonitor } from "./core/auth.js";
 
 function getRouteFromHash() {
@@ -148,7 +148,7 @@ async function renderRoute(route, session) {
         case "subscriptions":
             return { summary: [], content: await renderSubscriptions() };
         case "settings":
-            return { summary: [], content: await renderSettings(session) };
+            return { summary: [], content: await renderSettings(session), afterRender: bindSettingsActions };
         case "dashboard":
         default:
             return await renderSuperAdminDashboard();

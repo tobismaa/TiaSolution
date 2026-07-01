@@ -40,7 +40,7 @@ export const ROUTES = {
 };
 
 export const ROLE_NAV = {
-    [ROLES.BUSINESS_ADMIN]: ["dashboard", "branches", "customerBilling", "payroll", "users"],
+    [ROLES.BUSINESS_ADMIN]: ["dashboard", "branches", "customerBilling", "payroll", "users", "settings"],
     [ROLES.MANAGER]: ["dashboard", "customerBilling", "glPosting", "reports"],
     [ROLES.STAFF]: ["dashboard", "operation", "accountManagement", "customerBilling", "payroll", "glPosting", "reports", "assets"],
     [ROLES.AUDITOR]: ["dashboard", "trialBalance", "generalLedgers", "reports"],

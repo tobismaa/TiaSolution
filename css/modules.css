@@ -831,9 +831,9 @@
     display: grid;
     gap: 16px;
     padding: 20px;
-    border: 1px solid rgba(20, 108, 67, 0.16);
+    border: 1px solid var(--line);
     border-radius: 18px;
-    background: linear-gradient(180deg, #ffffff, #f3faf6);
+    background: linear-gradient(180deg, #ffffff, var(--brand-document-soft, #f3faf6));
 }
 
 .invoice-document__head,
@@ -849,7 +849,7 @@
     padding: 20px;
     border-bottom: 0;
     border-radius: 16px;
-    background: linear-gradient(135deg, #0f5132, #146c43);
+    background: linear-gradient(135deg, var(--accent-deep), var(--accent));
     color: #fff;
 }
 
@@ -905,7 +905,7 @@
 
 .invoice-document__table-wrap {
     overflow-x: auto;
-    border: 1px solid rgba(20, 108, 67, 0.14);
+    border: 1px solid var(--line);
     border-radius: 14px;
     background: #fff;
 }

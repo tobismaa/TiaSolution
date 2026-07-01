@@ -12,6 +12,7 @@ import { getReportsSummary, getTransactionSummaryReport, getTrialBalanceReport }
 import { ROLES } from "../../core/roles.js";
 import { getCurrentSessionContext } from "../../core/session.js";
 import { getActiveBranchDetails } from "../../core/data-access.js";
+import { applyBrandingToDocument, getAppliedBranding } from "../../core/branding.js";
 
 function escapeCsvValue(value) {
     const text = String(value ?? "");
@@ -615,6 +616,7 @@ function downloadStatementPdf(statement, options = {}) {
     if (!statement) {
         return;
     }
+    const branding = applyBrandingToDocument(getAppliedBranding());
     const generatedBy = String(options.generatedBy || "System").trim();
     const generatedAt = formatDateTime(new Date().toISOString());
 
@@ -648,15 +650,16 @@ function downloadStatementPdf(statement, options = {}) {
             <title>GL Statement</title>
             <style>
                 @page { size: A4; margin: 12mm; }
+                :root { ${branding.cssVars} }
                 body { font-family: Arial, sans-serif; padding: 20px; color: #222; }
-                h2 { margin: 0 0 8px; }
+                h2 { margin: 0 0 8px; color: var(--brand); }
                 .meta { margin: 0 0 14px; font-size: 12px; color: #555; }
                 .summary { margin: 0 0 14px; border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
                 .summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; font-size: 12px; }
                 .summary-grid strong { font-size: 12px; }
                 table { width: 100%; border-collapse: collapse; font-size: 12px; }
                 th, td { border: 1px solid #ddd; padding: 6px; text-align: left; vertical-align: top; }
-                th { background: #f5f5f5; }
+                th { background: var(--brand-soft); color: var(--brand); }
                 .footer { margin-top: 16px; font-size: 12px; color: #555; }
             </style>
         </head>
@@ -725,6 +728,7 @@ function downloadStatementPdf(statement, options = {}) {
 }
 
 function downloadOperationTransactionSummaryPdf(rows = [], details = {}, options = {}) {
+    const branding = applyBrandingToDocument(getAppliedBranding());
     const generatedBy = String(options.generatedBy || "System").trim();
     const generatedAt = formatDateTime(new Date().toISOString());
     const totalDr = (rows || []).reduce((sum, row) => sum + (String(row.type || "").toUpperCase() === "DR" ? Number(row.amount || 0) : 0), 0);
@@ -788,8 +792,9 @@ function downloadOperationTransactionSummaryPdf(rows = [], details = {}, options
                     --muted: #5b6774;
                     --border: #d6deea;
                     --surface: #f7f9fc;
-                    --headerA: #0f3d6e;
-                    --headerB: #1a659e;
+                    --headerA: ${branding.theme.accentDeep};
+                    --headerB: ${branding.theme.accent};
+                    ${branding.cssVars}
                     --dr-bg: #fde8e8;
                     --dr-fg: #9b1c1c;
                     --cr-bg: #def7ec;
@@ -805,7 +810,7 @@ function downloadOperationTransactionSummaryPdf(rows = [], details = {}, options
                 .page { padding: 16px; }
                 .hero {
                     color: var(--ink);
-                    border: 2px solid #174c7a;
+                    border: 2px solid var(--brand);
                     border-radius: 12px;
                     padding: 12px 14px;
                     margin-bottom: 12px;
@@ -818,7 +823,7 @@ function downloadOperationTransactionSummaryPdf(rows = [], details = {}, options
                     top: 0;
                     bottom: 0;
                     width: 8px;
-                    background: #174c7a;
+                    background: var(--brand);
                     border-radius: 10px 0 0 10px;
                 }
                 .hero h2 { margin: 0; font-size: 20px; letter-spacing: 0.2px; }
@@ -829,7 +834,7 @@ function downloadOperationTransactionSummaryPdf(rows = [], details = {}, options
                     align-items: center;
                     gap: 6px;
                     font-size: 10px;
-                    color: #174c7a;
+                    color: var(--brand);
                     font-weight: 700;
                     text-transform: uppercase;
                     letter-spacing: 0.35px;
@@ -910,8 +915,8 @@ function downloadOperationTransactionSummaryPdf(rows = [], details = {}, options
                 <header class="hero">
                     <div class="hero-mark">
                         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-                            <circle cx="8" cy="8" r="7" fill="none" stroke="#174c7a" stroke-width="2"></circle>
-                            <path d="M4 8h8M8 4v8" stroke="#174c7a" stroke-width="1.5"></path>
+                            <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="2"></circle>
+                            <path d="M4 8h8M8 4v8" stroke="currentColor" stroke-width="1.5"></path>
                         </svg>
                         TIA Financial Report
                     </div>
@@ -980,6 +985,7 @@ function downloadTrialBalancePdf(statement, options = {}) {
         return;
     }
 
+    const branding = applyBrandingToDocument(getAppliedBranding());
     const generatedBy = String(options.generatedBy || "System").trim();
     const generatedAt = formatDateTime(new Date().toISOString());
     const scopeLabel = String(statement.scopeLabel || "Head Office").trim() || "Head Office";
@@ -1029,8 +1035,9 @@ function downloadTrialBalancePdf(statement, options = {}) {
                     --paper: #ffffff;
                     --surface: #f6f8fb;
                     --line: #d8e1ea;
-                    --navy: #17313e;
-                    --teal: #1f6f78;
+                    --navy: ${branding.theme.accentDeep};
+                    --teal: ${branding.theme.accent};
+                    ${branding.cssVars}
                     --sand: #f5ede3;
                     --head-bg: #eef8f4;
                     --head-fg: #15624d;

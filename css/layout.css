@@ -32,6 +32,20 @@
     background: linear-gradient(135deg, #cf815d, var(--accent-deep));
     font-weight: 800;
     font-size: 18px;
+    overflow: hidden;
+    flex: 0 0 auto;
+}
+
+.brand-mark.has-logo {
+    background: #ffffff;
+    padding: 4px;
+}
+
+.brand-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
 }
 
 .nav {

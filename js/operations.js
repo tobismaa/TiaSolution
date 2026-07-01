@@ -2,6 +2,7 @@ import { getCurrentSessionContext } from "./core/session.js";
 import { getAccessBanner } from "./core/subscription.js";
 import { ROLES, ROLE_NAV } from "./core/roles.js";
 import { getDefaultRouteForRoutes, getEnabledRoutesForRole } from "./core/features.js";
+import { applyOrganizationBranding } from "./core/branding.js";
 import { ensureRoute } from "./core/guards.js";
 import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta } from "./shared/ui.js";
 import { createPageLoadingController } from "./shared/page-loading.js";
@@ -84,6 +85,7 @@ export async function initOperationsShell() {
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
     startLoginAttemptMonitor();
+    await applyOrganizationBranding(session);
 
     const navItems = getEnabledRoutesForRole(ROLES.STAFF, session.featureKeys);
     const banner = getAccessBanner(session);

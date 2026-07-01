@@ -3,6 +3,7 @@ import { createInvoice, recordInvoicePayment } from "../invoices/invoices-servic
 import { createTable, formatCurrency, formatStatusTone } from "../../core/utils.js";
 import { getCurrentSessionContext } from "../../core/session.js";
 import { showToast } from "../../shared/toast.js";
+import { applyBrandingToDocument, getAppliedBranding } from "../../core/branding.js";
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -399,6 +400,8 @@ function sendCustomerEmail(customer, session) {
 
 function buildReceiptHtml(customer, invoice) {
     const branchName = invoice.branchName || "Head Office";
+    const branding = applyBrandingToDocument(getAppliedBranding());
+    const logoMarkup = branding.logoUrl ? `<img class="brand-logo" src="${escapeHtml(branding.logoUrl)}" alt="">` : "";
     const rows = invoice.items.length
         ? invoice.items.map((item) => `
             <tr>
@@ -418,10 +421,12 @@ function buildReceiptHtml(customer, invoice) {
             <title>Receipt ${escapeHtml(invoice.number)}</title>
             <style>
                 * { box-sizing: border-box; }
-                :root { --ink: #17212b; --muted: #667085; --brand: #146c43; --brand-2: #0f5132; --line: #d7e8df; }
+                :root { --ink: #17212b; --muted: #667085; ${branding.cssVars} }
                 body { font-family: Arial, sans-serif; color: var(--ink); margin: 0; padding: 0; background: #eef3f6; }
                 .page { width: min(820px, 100%); margin: 0 auto; padding: 30px; background: #ffffff; min-height: 100vh; }
                 .hero { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start; padding: 26px; border-radius: 18px; background: linear-gradient(135deg, var(--brand-2), var(--brand)); color: #fff; }
+                .hero-brand { display: flex; align-items: center; gap: 14px; }
+                .brand-logo { width: 58px; height: 58px; object-fit: contain; background: #fff; border-radius: 14px; padding: 6px; }
                 h1, h2, h3, p { margin: 0; }
                 h1 { font-size: 28px; letter-spacing: 0; }
                 .hero p { color: rgba(255,255,255,0.78); margin-top: 6px; }
@@ -437,14 +442,14 @@ function buildReceiptHtml(customer, invoice) {
                 .dates { display: grid; gap: 8px; }
                 table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 20px 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
                 th, td { border-bottom: 1px solid var(--line); padding: 12px; text-align: left; font-size: 13px; }
-                th { color: var(--brand); background: #f0f8f4; font-size: 11px; text-transform: uppercase; }
+                th { color: var(--brand); background: var(--brand-soft); font-size: 11px; text-transform: uppercase; }
                 tr:last-child td { border-bottom: 0; }
                 td:nth-child(2), td:nth-child(3), td:nth-child(4), td:nth-child(5),
                 th:nth-child(2), th:nth-child(3), th:nth-child(4), th:nth-child(5) { text-align: right; }
                 .summary { margin-left: auto; width: min(340px, 100%); display: grid; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
                 .total { display: flex; justify-content: space-between; gap: 16px; padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fff; }
                 .total:last-child { border-bottom: 0; }
-                .grand { font-size: 18px; font-weight: 700; color: var(--brand); background: #f0f8f4; }
+                .grand { font-size: 18px; font-weight: 700; color: var(--brand); background: var(--brand-soft); }
                 .footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
                 @media print {
                     body { background: #fff; }
@@ -456,10 +461,13 @@ function buildReceiptHtml(customer, invoice) {
         <body>
             <main class="page">
                 <section class="hero">
-                    <div>
-                        <span class="status">paid</span>
-                        <h1>${escapeHtml(branchName)}</h1>
-                        <p>Receipt ${escapeHtml(invoice.number)}</p>
+                    <div class="hero-brand">
+                        ${logoMarkup}
+                        <div>
+                            <span class="status">paid</span>
+                            <h1>${escapeHtml(branchName)}</h1>
+                            <p>Receipt ${escapeHtml(invoice.number)}</p>
+                        </div>
                     </div>
                     <div class="amount-due">
                         <span>Amount Paid</span>

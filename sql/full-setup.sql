@@ -131,6 +131,8 @@ create table if not exists public.business_settings (
     business_id uuid primary key references public.businesses(id) on delete cascade,
     tax_number text,
     invoice_prefix text default 'INV',
+    theme_color text not null default 'green' check (theme_color in ('green', 'blue', 'red', 'purple', 'teal', 'gold')),
+    logo_url text,
     expense_approval_required boolean not null default true,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()

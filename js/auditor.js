@@ -5,6 +5,7 @@ import { ROLES, ROLE_NAV } from "./core/roles.js";
 import { getDefaultRouteForRoutes, getEnabledRoutesForRole } from "./core/features.js";
 import { ensureRoute } from "./core/guards.js";
 import { getActiveBranchDetails } from "./core/data-access.js";
+import { applyOrganizationBranding } from "./core/branding.js";
 import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta } from "./shared/ui.js";
 import { createPageLoadingController } from "./shared/page-loading.js";
 import { renderAuditorDashboard, renderAuditorTrialBalance } from "./dashboards/auditor-dashboard.js";
@@ -79,6 +80,7 @@ export async function initAuditorShell() {
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
     startLoginAttemptMonitor();
+    await applyOrganizationBranding(session);
     const scopeWidget = document.createElement("label");
     scopeWidget.className = "topbar-scope";
     scopeWidget.innerHTML = `

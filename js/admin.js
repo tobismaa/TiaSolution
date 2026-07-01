@@ -3,6 +3,7 @@ import { getStoredBranchScope, resolveBranchScope, saveBranchScope } from "./cor
 import { getAccessBanner } from "./core/subscription.js";
 import { ROLES, ROLE_NAV } from "./core/roles.js";
 import { getDefaultRouteForRoutes, getEnabledRoutesForRole } from "./core/features.js";
+import { applyOrganizationBranding } from "./core/branding.js";
 import { ensureRoute } from "./core/guards.js";
 import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta } from "./shared/ui.js";
 import { createPageLoadingController } from "./shared/page-loading.js";
@@ -16,7 +17,7 @@ import { renderExpenses, bindExpensesActions } from "./modules/expenses/expenses
 import { renderPayroll } from "./modules/payroll/payroll.js";
 import { renderReports } from "./modules/reports/reports.js";
 import { renderUsers } from "./modules/users/users.js";
-import { renderSettings } from "./modules/settings/settings.js";
+import { bindSettingsActions, renderSettings } from "./modules/settings/settings.js";
 import { ensureLoginSessionClaimed, signOutUser, startLoginAttemptMonitor } from "./core/auth.js";
 
 function getRouteFromHash() {
@@ -55,7 +56,7 @@ async function renderRoute(route, session, scope) {
         case "users":
             return await renderUsers({ branchId: scope?.branchId || "" });
         case "settings":
-            return { summary: [], content: await renderSettings(session) };
+            return { summary: [], content: await renderSettings(session), afterRender: bindSettingsActions };
         case "dashboard":
         default:
             return await renderAdminDashboard();
@@ -93,6 +94,7 @@ export async function initAdminShell() {
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
     startLoginAttemptMonitor();
+    await applyOrganizationBranding(session);
     const scopeWidget = document.createElement("label");
     scopeWidget.className = "topbar-scope";
     scopeWidget.innerHTML = `

@@ -13,6 +13,7 @@ import {
 } from "./account-management-service.js";
 import { getAccountProductsCatalog } from "../general-ledgers/general-ledgers-service.js";
 import { showToast } from "../../shared/toast.js";
+import { applyBrandingToDocument, getAppliedBranding } from "../../core/branding.js";
 
 let accountOpeningModalTab = "personal";
 
@@ -918,6 +919,7 @@ function buildStatementEntryDetailHtml(record, entry = {}, options = {}) {
 }
 
 function buildStatementPreviewHtml(record) {
+    const branding = applyBrandingToDocument(getAppliedBranding());
     const entries = getStatementEntries(record);
     const statementRows = entries.map((entry, index) => ([
         escapeHtml(entry.date || "-"),
@@ -1035,12 +1037,13 @@ function downloadStatementExcel(record) {
         <head>
             <meta charset="utf-8">
             <style>
+                :root { ${branding.cssVars} }
                 body { font-family: Segoe UI, Arial, sans-serif; color: #1d2a36; }
                 .sheet { padding: 24px; background: #fffdf9; }
                 .hero { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
                 .hero h1 { margin: 0 0 8px; font-size: 24px; }
                 .meta { color: #6b7785; font-size: 12px; }
-                .badge { padding: 8px 12px; background: #143f6b; color: #fff; font-weight: 700; border-radius: 999px; font-size: 11px; }
+                .badge { padding: 8px 12px; background: var(--brand); color: #fff; font-weight: 700; border-radius: 999px; font-size: 11px; }
                 .summary { width: 100%; margin-bottom: 18px; }
                 .summary td { vertical-align: top; padding: 0; }
                 .identity { width: 68%; padding-right: 18px; }
@@ -1058,7 +1061,7 @@ function downloadStatementExcel(record) {
                 .debit { color: #b54545; }
                 .neutral { color: #1d2a36; }
                 .tx-table { width: 100%; border-collapse: collapse; }
-                .tx-table th { background: #143f6b; color: #fff; text-align: left; padding: 12px 10px; font-size: 11px; text-transform: uppercase; }
+                .tx-table th { background: var(--brand); color: #fff; text-align: left; padding: 12px 10px; font-size: 11px; text-transform: uppercase; }
                 .tx-table td { border-bottom: 1px solid #e7edf3; padding: 11px 10px; font-size: 12px; }
                 .empty-row { text-align: center; color: #6b7785; background: #f7fafc; }
             </style>
@@ -1139,6 +1142,7 @@ function downloadStatementExcel(record) {
 }
 
 function downloadStatementPdf(record) {
+    const branding = applyBrandingToDocument(getAppliedBranding());
     const entries = getStatementEntries(record);
     const generatedOn = new Date().toLocaleString("en-NG", {
         dateStyle: "medium",
@@ -1185,12 +1189,13 @@ function downloadStatementPdf(record) {
             <meta charset="utf-8">
             <title>Statement of Account</title>
             <style>
+                :root { ${branding.cssVars} }
                 body { font-family: "Segoe UI", Arial, sans-serif; padding: 20px; color: #13212b; background: #f6f1e8; }
                 .sheet { padding: 22px; border-radius: 24px; background: linear-gradient(180deg, #fffdfa, #f7efe3); border: 1px solid #e5d8c6; }
                 .hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #e6d8c6; }
-                h1 { margin: 0 0 6px; font-size: 23px; color: #17324d; }
+                h1 { margin: 0 0 6px; font-size: 23px; color: var(--brand); }
                 .meta { color: #6b7785; font-size: 11px; }
-                .badge { padding: 8px 12px; border-radius: 999px; background: linear-gradient(135deg, #143f6b, #2f6ea7); color: #fff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+                .badge { padding: 8px 12px; border-radius: 999px; background: linear-gradient(135deg, var(--brand-2), var(--brand)); color: #fff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
                 .summary { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; margin-bottom: 14px; }
                 .identity, .passport, .balance-card { border: 1px solid #ddd6ca; border-radius: 16px; padding: 14px; background: rgba(255, 255, 255, 0.96); }
                 .identity { background: linear-gradient(180deg, #ffffff, #faf6ef); }
@@ -1210,7 +1215,7 @@ function downloadStatementPdf(record) {
                 .table-wrap { border: 1px solid #d9e3ee; border-radius: 18px; overflow: hidden; background: #fff; }
                 table { width: 100%; border-collapse: collapse; margin-top: 0; }
                 td, th { border-bottom: 1px solid #d9e0e7; padding: 9px 10px; text-align: left; font-size: 11px; }
-                th { background: linear-gradient(135deg, #143f6b, #2f6ea7); color: #fff; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+                th { background: linear-gradient(135deg, var(--brand-2), var(--brand)); color: #fff; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
                 tbody tr:nth-child(even) td { background: #f8fbfe; }
                 tbody tr:last-child td { border-bottom: 0; }
             </style>

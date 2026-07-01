@@ -2,6 +2,7 @@ import { getCurrentSessionContext } from "./session.js";
 import { getAccessBanner } from "./subscription.js";
 import { ROLES, ROLE_NAV, getDefaultRoute } from "./roles.js";
 import { ensureRoute } from "./guards.js";
+import { applyOrganizationBranding } from "./branding.js";
 import { mountTopbarDateClock, renderSidebarNav, renderSummaryStrip, setPageMeta } from "../shared/ui.js";
 import { createPageLoadingController } from "../shared/page-loading.js";
 import { renderAdminDashboard } from "../dashboards/admin-dashboard.js";
@@ -20,7 +21,7 @@ import { renderReports } from "../modules/reports/reports.js";
 import { renderAssets } from "../modules/assets/assets.js";
 import { renderUsers } from "../modules/users/users.js";
 import { renderGeneralLedgers } from "../modules/general-ledgers/general-ledgers.js";
-import { renderSettings } from "../modules/settings/settings.js";
+import { bindSettingsActions, renderSettings } from "../modules/settings/settings.js";
 import { renderAuditLog } from "../modules/audit/audit-log.js";
 import { renderBusinesses } from "../modules/businesses/businesses.js";
 import { renderDemoRequests, bindDemoRequestActions } from "../modules/demo-requests/demo-requests.js";
@@ -101,7 +102,7 @@ async function renderRoute(route, session) {
         case "platformUsers":
             return await renderUsers({ platform: true });
         case "audit": return { summary: [], content: await renderAuditLog() };
-        case "settings": return { summary: [], content: await renderSettings(session) };
+        case "settings": return { summary: [], content: await renderSettings(session), afterRender: bindSettingsActions };
         case "businesses": return await renderBusinesses();
         case "demoRequests": return { summary: [], content: await renderDemoRequests(), afterRender: bindDemoRequestActions };
         case "subscriptions": return { summary: [], content: await renderSubscriptions() };
@@ -162,6 +163,7 @@ export async function initAppShell() {
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
     startLoginAttemptMonitor();
+    await applyOrganizationBranding(session);
     bindModalSafetyGuards();
 
     const navItems = ROLE_NAV[session.role] || ROLE_NAV[ROLES.BUSINESS_ADMIN];
