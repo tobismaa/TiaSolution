@@ -238,7 +238,7 @@ async function handleSecurityNotification(request, response) {
     const safeEmail = escapeHtml(user.email);
     const safeTime = escapeHtml(occurredAt);
 
-    const subject = "Tia security alert: login attempt blocked";
+    const subject = "Security alert: login attempt blocked";
     const text = [
         "Tia blocked another login attempt on your account.",
         "",
@@ -250,13 +250,77 @@ async function handleSecurityNotification(request, response) {
     ].join("\n");
 
     const html = `
-        <div style="font-family:Arial,sans-serif;line-height:1.55;color:#17313e">
-            <h2 style="margin:0 0 12px">Login attempt blocked</h2>
-            <p>Tia blocked another login attempt on your account.</p>
-            <p><strong>Account:</strong> ${safeEmail}<br><strong>Time:</strong> ${safeTime}</p>
-            <p>If this was you, log out from the active device before signing in elsewhere.</p>
-            <p>If this was not you, change your password and contact your administrator.</p>
-        </div>
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>Login attempt blocked</title>
+        </head>
+        <body style="margin:0;padding:0;background:#f3f7f5;font-family:Arial,Helvetica,sans-serif;color:#17313e;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f7f5;margin:0;padding:28px 12px;">
+                <tr>
+                    <td align="center">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #dce8e1;border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(23,49,62,0.10);">
+                            <tr>
+                                <td style="background:#0f5f3f;padding:28px 30px;color:#ffffff;">
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td>
+                                                <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:#bcebd2;">Tia Security</div>
+                                                <h1 style="margin:8px 0 0;font-size:26px;line-height:1.2;font-weight:800;color:#ffffff;">Login attempt blocked</h1>
+                                            </td>
+                                            <td align="right" style="width:58px;">
+                                                <div style="width:46px;height:46px;border-radius:999px;background:#e6f6ee;color:#0f5f3f;text-align:center;line-height:46px;font-size:24px;font-weight:800;">!</div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:30px;">
+                                    <p style="margin:0 0 18px;font-size:16px;line-height:1.55;color:#294653;">Tia blocked another login attempt on your account while an active session was already open.</p>
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:20px 0;border:1px solid #dce8e1;border-radius:12px;background:#f8fbf9;">
+                                        <tr>
+                                            <td style="padding:16px 18px;border-bottom:1px solid #dce8e1;">
+                                                <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:800;color:#5c7468;">Account</div>
+                                                <div style="margin-top:5px;font-size:15px;font-weight:700;color:#17313e;">${safeEmail}</div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:16px 18px;">
+                                                <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:800;color:#5c7468;">Time</div>
+                                                <div style="margin-top:5px;font-size:15px;font-weight:700;color:#17313e;">${safeTime}</div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:22px 0 0;">
+                                        <tr>
+                                            <td style="padding:16px 18px;border-left:4px solid #0f8a5f;background:#edf8f2;border-radius:10px;">
+                                                <p style="margin:0;font-size:14px;line-height:1.55;color:#254b3a;"><strong>If this was you:</strong> log out from the active device before signing in elsewhere.</p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:12px 0 0;">
+                                        <tr>
+                                            <td style="padding:16px 18px;border-left:4px solid #b45309;background:#fff7ed;border-radius:10px;">
+                                                <p style="margin:0;font-size:14px;line-height:1.55;color:#5a3512;"><strong>If this was not you:</strong> change your password and contact your administrator immediately.</p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:18px 30px;background:#f8fbf9;border-top:1px solid #dce8e1;">
+                                    <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7f76;">This is an automated security notification from Tia. Do not reply to this email.</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
     `;
 
     const { data, error } = await resend.emails.send({
