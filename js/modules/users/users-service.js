@@ -456,20 +456,6 @@ export async function createOrganizationUser(payload) {
         throw new Error("Unable to create the organization user login.");
     }
 
-    const { error: profileUpsertError } = await supabase
-        .from("profiles")
-        .upsert({
-            id: userId,
-            full_name: fullName,
-            email
-        }, {
-            onConflict: "id"
-        });
-
-    if (profileUpsertError) {
-        throw profileUpsertError;
-    }
-
     let { error: memberError } = await supabase
         .from("business_members")
         .upsert({
@@ -498,6 +484,20 @@ export async function createOrganizationUser(payload) {
 
     if (memberError) {
         throw memberError;
+    }
+
+    const { error: profileUpsertError } = await supabase
+        .from("profiles")
+        .upsert({
+            id: userId,
+            full_name: fullName,
+            email
+        }, {
+            onConflict: "id"
+        });
+
+    if (profileUpsertError) {
+        throw profileUpsertError;
     }
 
     return true;
