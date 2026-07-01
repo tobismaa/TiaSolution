@@ -7,12 +7,24 @@ import {
     onboardBusinessClient,
     setBusinessBranchActive,
     updateBusinessBranchFeatureAccess,
+    updateBusinessBranchLogo,
     updateBusinessDetails,
     updateBusinessSubscriptionState
 } from "./businesses-service.js";
 import { getOrganizationUsersForPlatform } from "../users/users-service.js";
 import { createTable, formatRole, formatStatusTone } from "../../core/utils.js";
 import { DASHBOARD_FEATURE_GROUPS, normalizeFeatureKeys } from "../../core/features.js";
+import { BRANDING_THEMES } from "../../core/branding.js";
+import { readLogoFileAsDataUrl } from "../settings/settings-service.js";
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 function showPageLoading() {
     window.TIA_PAGE_LOADING?.show?.();
@@ -71,6 +83,8 @@ function populateBusinessDetailsForm(form, business) {
     setValue("billing_months", business.billingMonths || "");
     setValue("subscription_status", business.status || "active");
     setValue("max_branches", business.maxBranches || "");
+    setValue("theme_color", business.branding?.themeColor || "green");
+    setValue("logo_url", business.branding?.logoUrl || "");
 
     const customMonthsWrap = form.querySelector("[data-details-custom-months-wrap]");
     const customMonthsInput = form.querySelector('input[name="billing_months"]');
@@ -84,6 +98,58 @@ function populateBusinessDetailsForm(form, business) {
     }
 
     syncFeaturePicker(form, business.featureKeys || []);
+}
+
+function renderThemeOptions(activeTheme = "green") {
+    return BRANDING_THEMES.map((theme) => `
+        <label class="theme-choice ${theme.key === activeTheme ? "is-selected" : ""}" style="--choice-color: ${theme.accent}; --choice-color-deep: ${theme.accentDeep};">
+            <input type="radio" name="theme_color" value="${theme.key}" ${theme.key === activeTheme ? "checked" : ""}>
+            <span class="theme-choice__swatch" aria-hidden="true"></span>
+            <span>${escapeHtml(theme.label)}</span>
+        </label>
+    `).join("");
+}
+
+function renderBusinessBrandingControls(businessName = "Organization", branding = {}) {
+    const logoUrl = branding?.logoUrl || "";
+    const activeTheme = branding?.themeColor || "green";
+    return `
+        <section class="business-branding-box">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">Organization branding</p>
+                    <h3>Theme & Logo</h3>
+                </div>
+                <span class="badge paid">Dashboards & documents</span>
+            </div>
+            <div class="branding-preview">
+                <div class="branding-preview__logo" data-business-logo-preview>
+                    ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span>${escapeHtml(String(businessName || "T").slice(0, 1).toUpperCase())}</span>`}
+                </div>
+                <div>
+                    <p class="sidebar-card-label">Current Brand</p>
+                    <h4>${escapeHtml(businessName || "Organization")}</h4>
+                    <p class="muted">Applies across dashboards, reports, invoices, receipts, and printable documents.</p>
+                </div>
+            </div>
+            <label class="form-field">
+                <span>Company Logo</span>
+                <input type="file" accept="image/*" data-business-logo-input>
+                <small>Use PNG, JPG, or SVG. Maximum 300KB.</small>
+            </label>
+            <input type="hidden" name="logo_url" value="${escapeHtml(logoUrl)}" data-business-logo-url>
+            <div class="form-field">
+                <span>Color Theme</span>
+                <div class="theme-choice-grid" data-theme-choice-grid>
+                    ${renderThemeOptions(activeTheme)}
+                </div>
+            </div>
+            <div class="button-row">
+                <button class="btn btn-secondary" type="button" data-business-remove-logo ${logoUrl ? "" : "disabled"}>Remove Logo</button>
+                <p class="muted" data-business-logo-status></p>
+            </div>
+        </section>
+    `;
 }
 
 function getSelectedFeatureKeys(container) {
@@ -400,8 +466,20 @@ function renderBranchManagementSection(businessId, branches) {
     const rows = (branches || []).length
         ? (branches || []).map((branch) => `
             <tr>
-                <td>${branch.name || "-"}</td>
-                <td>${branch.code || "-"}</td>
+                <td>${escapeHtml(branch.name || "-")}</td>
+                <td>${escapeHtml(branch.code || "-")}</td>
+                <td>
+                    <div class="branch-logo-cell" data-branch-logo-row>
+                        <div class="branding-preview__logo branch-logo-preview" data-branch-logo-preview>
+                            ${branch.logoUrl ? `<img src="${escapeHtml(branch.logoUrl)}" alt="">` : `<span>${escapeHtml(String(branch.name || "B").slice(0, 1).toUpperCase())}</span>`}
+                        </div>
+                        <input type="hidden" value="${escapeHtml(branch.logoUrl || "")}" data-branch-logo-url>
+                        <input class="branch-logo-input" type="file" accept="image/*" data-branch-logo-input aria-label="Upload branch logo">
+                        <button class="btn btn-secondary" type="button" data-branch-logo-save-business-id="${businessId}" data-branch-logo-save-id="${branch.id}">
+                            Save Logo
+                        </button>
+                    </div>
+                </td>
                 <td>${branch.isHeadOffice ? "Head Office" : "Branch"}</td>
                 <td><span class="badge ${formatStatusTone(branch.isActive ? "active" : "deactivated")}">${branch.isActive ? "Active" : "Deactivated"}</span></td>
                 <td>
@@ -419,7 +497,7 @@ function renderBranchManagementSection(businessId, branches) {
                 </td>
             </tr>
         `).join("")
-        : `<tr><td colspan="5">No branches available for this organization.</td></tr>`;
+        : `<tr><td colspan="6">No branches available for this organization.</td></tr>`;
 
     return `
         <section class="panel mt-18">
@@ -435,6 +513,7 @@ function renderBranchManagementSection(businessId, branches) {
                         <tr>
                             <th>Name</th>
                             <th>Code</th>
+                            <th>Logo</th>
                             <th>Type</th>
                             <th>Status</th>
                             <th>Action</th>
@@ -553,6 +632,7 @@ function renderBusinessDetailsModalContent(business, branches = []) {
             <p class="muted business-details-end-preview" data-business-end-preview>
                 End date updates automatically for monthly, quarterly, yearly, and custom periods.
             </p>
+            ${renderBusinessBrandingControls(business.name, business.branding)}
             ${renderFeaturePicker(business.featureKeys || [])}
             <div class="button-row business-details-actions">
                 <button class="btn btn-secondary business-detail-toggle-btn" type="button" data-business-id="${business.id}" data-business-status="${business.status}">
@@ -678,6 +758,7 @@ export async function renderBusinesses() {
                             <p class="muted business-details-end-preview" data-business-end-preview>
                                 End date updates automatically for monthly, quarterly, yearly, and custom periods.
                             </p>
+                            ${renderBusinessBrandingControls("New organization", { themeColor: "green", logoUrl: "" })}
                             ${renderFeaturePicker([])}
                             <div class="button-row">
                                 <button class="btn btn-primary" type="submit" data-business-submit>
@@ -752,6 +833,37 @@ export async function renderBusinesses() {
             const customMonthsWrap = pageContent.querySelector("[data-custom-months-wrap]");
             const customMonthsInput = pageContent.querySelector('input[name="billing_months"]');
 
+            const setOrganizationLogoPreview = (formNode, logoUrl) => {
+                const preview = formNode?.querySelector("[data-business-logo-preview]");
+                const hiddenInput = formNode?.querySelector("[data-business-logo-url]");
+                const removeButton = formNode?.querySelector("[data-business-remove-logo]");
+                const statusNode = formNode?.querySelector("[data-business-logo-status]");
+                if (hiddenInput) {
+                    hiddenInput.value = logoUrl || "";
+                }
+                if (preview) {
+                    const fallback = String(formNode?.querySelector('input[name="business_name"], input[name="name"]')?.value || "T").slice(0, 1).toUpperCase();
+                    preview.innerHTML = logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span>${escapeHtml(fallback || "T")}</span>`;
+                }
+                if (removeButton) {
+                    removeButton.disabled = !logoUrl;
+                }
+                if (statusNode) {
+                    statusNode.textContent = logoUrl ? "Logo ready to save." : "Logo will be removed when you save.";
+                }
+            };
+
+            const setBranchLogoPreview = (row, logoUrl) => {
+                const preview = row?.querySelector("[data-branch-logo-preview]");
+                const hiddenInput = row?.querySelector("[data-branch-logo-url]");
+                if (hiddenInput) {
+                    hiddenInput.value = logoUrl || "";
+                }
+                if (preview) {
+                    preview.innerHTML = logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : "<span>B</span>";
+                }
+            };
+
             const syncCustomMonthsVisibility = () => {
                 const isCustom = String(billingCycleSelect?.value || "").toLowerCase() === "custom";
                 if (customMonthsWrap) {
@@ -821,6 +933,56 @@ export async function renderBusinesses() {
             syncCustomMonthsVisibility();
             syncPeriodPreview(form);
 
+            pageContent.addEventListener("change", async (event) => {
+                const themeInput = event.target.closest?.('input[name="theme_color"]');
+                if (themeInput) {
+                    const themeGrid = themeInput.closest("[data-theme-choice-grid]");
+                    themeGrid?.querySelectorAll(".theme-choice").forEach((choice) => {
+                        choice.classList.toggle("is-selected", choice.contains(themeInput) && themeInput.checked);
+                    });
+                    return;
+                }
+
+                const organizationLogoInput = event.target.closest?.("[data-business-logo-input]");
+                if (organizationLogoInput) {
+                    const formNode = organizationLogoInput.closest("form");
+                    const statusNode = formNode?.querySelector("[data-business-logo-status]");
+                    const file = organizationLogoInput.files?.[0];
+                    if (!file) {
+                        return;
+                    }
+                    try {
+                        const dataUrl = await readLogoFileAsDataUrl(file);
+                        setOrganizationLogoPreview(formNode, dataUrl);
+                    } catch (error) {
+                        organizationLogoInput.value = "";
+                        if (statusNode) {
+                            statusNode.textContent = error?.message || "Unable to load logo.";
+                        }
+                    }
+                    return;
+                }
+
+                const branchLogoInput = event.target.closest?.("[data-branch-logo-input]");
+                if (branchLogoInput) {
+                    const row = branchLogoInput.closest("[data-branch-logo-row]");
+                    const file = branchLogoInput.files?.[0];
+                    if (!file) {
+                        return;
+                    }
+                    try {
+                        const dataUrl = await readLogoFileAsDataUrl(file);
+                        setBranchLogoPreview(row, dataUrl);
+                    } catch (error) {
+                        branchLogoInput.value = "";
+                        const statusNode = detailsBody?.querySelector("[data-branch-action-status]");
+                        if (statusNode) {
+                            statusNode.textContent = error?.message || "Unable to load branch logo.";
+                        }
+                    }
+                }
+            });
+
             pageContent.addEventListener("click", async (event) => {
                 const moveButton = event.target.closest("[data-feature-move]");
                 if (moveButton) {
@@ -831,6 +993,52 @@ export async function renderBusinesses() {
                 const dashboardTab = event.target.closest("[data-feature-dashboard-tab]");
                 if (dashboardTab) {
                     activateFeatureDashboard(dashboardTab, dashboardTab.getAttribute("data-feature-dashboard-tab"));
+                    return;
+                }
+
+                const removeLogoButton = event.target.closest("[data-business-remove-logo]");
+                if (removeLogoButton) {
+                    const formNode = removeLogoButton.closest("form");
+                    const logoInput = formNode?.querySelector("[data-business-logo-input]");
+                    if (logoInput) {
+                        logoInput.value = "";
+                    }
+                    setOrganizationLogoPreview(formNode, "");
+                    return;
+                }
+
+                const branchLogoSaveButton = event.target.closest("[data-branch-logo-save-id][data-branch-logo-save-business-id]");
+                if (branchLogoSaveButton) {
+                    const businessId = branchLogoSaveButton.getAttribute("data-branch-logo-save-business-id");
+                    const branchId = branchLogoSaveButton.getAttribute("data-branch-logo-save-id");
+                    const row = branchLogoSaveButton.closest("[data-branch-logo-row]");
+                    const logoUrl = row?.querySelector("[data-branch-logo-url]")?.value || "";
+                    const statusNode = detailsBody?.querySelector("[data-branch-action-status]");
+                    if (!businessId || !branchId) {
+                        return;
+                    }
+
+                    const originalText = branchLogoSaveButton.textContent;
+                    branchLogoSaveButton.disabled = true;
+                    branchLogoSaveButton.textContent = "Saving...";
+                    showPageLoading();
+
+                    try {
+                        await updateBusinessBranchLogo(businessId, branchId, logoUrl);
+                        if (statusNode) {
+                            statusNode.textContent = "Branch logo saved.";
+                        }
+                        await loadBusinessDetailsPanel(businessId);
+                    } catch (error) {
+                        if (statusNode) {
+                            statusNode.textContent = error?.message || "Unable to save branch logo.";
+                        }
+                        branchLogoSaveButton.textContent = originalText;
+                        branchLogoSaveButton.disabled = false;
+                    } finally {
+                        hidePageLoading();
+                    }
+
                     return;
                 }
 
@@ -1087,6 +1295,8 @@ export async function renderBusinesses() {
                         billing_cycle: String(data.get("billing_cycle") || "monthly").trim(),
                         billing_months: Number(data.get("billing_months") || 0),
                         subscription_status: String(data.get("subscription_status") || "active").trim(),
+                        theme_color: String(data.get("theme_color") || "green").trim(),
+                        logo_url: String(data.get("logo_url") || "").trim(),
                         featureKeys: getSelectedFeatureKeys(detailsForm)
                     });
 
@@ -1130,6 +1340,8 @@ export async function renderBusinesses() {
                         billing_cycle: String(data.get("billing_cycle") || "monthly").trim(),
                         billing_months: Number(data.get("billing_months") || 0),
                         subscription_status: String(data.get("subscription_status") || "active").trim(),
+                        theme_color: String(data.get("theme_color") || "green").trim(),
+                        logo_url: String(data.get("logo_url") || "").trim(),
                         featureKeys: getSelectedFeatureKeys(form)
                     });
 

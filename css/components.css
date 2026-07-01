@@ -1531,6 +1531,15 @@ body .page-loading-mark {
     gap: 18px;
 }
 
+.business-branding-box {
+    display: grid;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.5);
+}
+
 .branding-preview {
     display: grid;
     grid-template-columns: 72px 1fr;
@@ -1561,6 +1570,32 @@ body .page-loading-mark {
     object-fit: contain;
     background: #ffffff;
     padding: 6px;
+}
+
+.branch-logo-cell {
+    min-width: 220px;
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.branch-logo-preview {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+
+.branch-logo-input {
+    max-width: 150px;
+    font-size: 0.78rem;
+}
+
+.table-subtext {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.78rem;
 }
 
 .branding-preview h4 {

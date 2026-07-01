@@ -6,6 +6,7 @@ import { showAlertModal } from "../shared/modal.js";
 import { sendSecurityNotification } from "./security-notifications.js";
 
 const LOGIN_SESSION_KEY = "tia_login_session_key";
+let sessionTimeoutMonitorStarted = false;
 
 function setSubmittingState(button, isSubmitting) {
     if (!button) {
@@ -87,6 +88,88 @@ function getDashboardUrl(session) {
     return "./app.html";
 }
 
+async function forceLocalSignOut(message, options = {}) {
+    if (window.__TIA_FORCE_LOCAL_SIGN_OUT_STARTED__) {
+        return;
+    }
+    window.__TIA_FORCE_LOCAL_SIGN_OUT_STARTED__ = true;
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+        try {
+            await supabase.auth.signOut();
+        } catch {
+            // Redirect still needs to happen if Supabase sign-out fails locally.
+        }
+    }
+
+    clearStoredSession();
+    clearLoginSessionKey();
+
+    showAlertModal(message || "Your session has ended. Please sign in again.", {
+        title: options.title || "Session ended",
+        eyebrow: options.eyebrow || "Security",
+        actionLabel: "Go to Login"
+    });
+
+    window.setTimeout(() => {
+        window.location.href = "./login.html";
+    }, 900);
+}
+
+async function getConfiguredSessionTimeoutMinutes(supabase) {
+    const { data, error } = await supabase.rpc("get_session_timeout_minutes");
+    if (error) {
+        return 0;
+    }
+
+    const minutes = Number(data || 0);
+    return Number.isFinite(minutes) && minutes > 0 ? minutes : 0;
+}
+
+function startSessionTimeoutMonitor(supabase) {
+    if (sessionTimeoutMonitorStarted || !supabase) {
+        return;
+    }
+
+    sessionTimeoutMonitorStarted = true;
+    let timeoutMinutes = 0;
+    let lastActivityAt = Date.now();
+
+    const markActivity = () => {
+        lastActivityAt = Date.now();
+    };
+
+    ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach((eventName) => {
+        window.addEventListener(eventName, markActivity, { passive: true });
+    });
+
+    getConfiguredSessionTimeoutMinutes(supabase).then((minutes) => {
+        timeoutMinutes = minutes;
+    }).catch(() => {
+        timeoutMinutes = 0;
+    });
+
+    window.setInterval(async () => {
+        if (!timeoutMinutes) {
+            try {
+                timeoutMinutes = await getConfiguredSessionTimeoutMinutes(supabase);
+            } catch {
+                timeoutMinutes = 0;
+            }
+            return;
+        }
+
+        const idleMs = Date.now() - lastActivityAt;
+        if (idleMs >= timeoutMinutes * 60 * 1000) {
+            await forceLocalSignOut("You were signed out because this session was idle for too long.", {
+                title: "Session timed out",
+                eyebrow: "Security timeout"
+            });
+        }
+    }, 30000);
+}
+
 async function claimLoginSession() {
     const supabase = getSupabaseClient();
     if (!supabase) {
@@ -141,6 +224,7 @@ export function startLoginAttemptMonitor() {
     }
 
     window.__TIA_LOGIN_ATTEMPT_MONITOR_STARTED__ = true;
+    startSessionTimeoutMonitor(supabase);
     const seenKey = `tia_login_attempt_seen_${sessionKey}`;
     let lastSeenAttemptAt = window.sessionStorage.getItem(seenKey) || "";
 
@@ -148,12 +232,23 @@ export function startLoginAttemptMonitor() {
         try {
             const { data, error } = await supabase
                 .from("user_login_sessions")
-                .select("last_login_attempt_at, login_attempt_count")
+                .select("is_active, last_login_attempt_at, login_attempt_count")
                 .eq("session_key", sessionKey)
-                .eq("is_active", true)
                 .maybeSingle();
 
-            if (error || !data?.last_login_attempt_at) {
+            if (error || !data) {
+                return;
+            }
+
+            if (data.is_active === false) {
+                await forceLocalSignOut("A Super Admin logged out this session.", {
+                    title: "Logged out by admin",
+                    eyebrow: "Security action"
+                });
+                return;
+            }
+
+            if (!data?.last_login_attempt_at) {
                 return;
             }
 

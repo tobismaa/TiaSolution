@@ -80,6 +80,7 @@ create table if not exists public.branches (
     business_id uuid not null references public.businesses(id) on delete cascade,
     name text not null,
     code text,
+    logo_url text,
     is_head_office boolean not null default false,
     is_active boolean not null default true,
     created_at timestamptz not null default now(),
@@ -105,6 +106,12 @@ create table if not exists public.business_settings (
     logo_url text,
     expense_approval_required boolean not null default true,
     created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists public.platform_settings (
+    key text primary key,
+    value text not null,
     updated_at timestamptz not null default now()
 );
 

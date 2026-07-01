@@ -1,6 +1,12 @@
-import { applyOrganizationBranding, BRANDING_THEMES } from "../../core/branding.js";
+import { ROLES } from "../../core/roles.js";
+import { formatRole } from "../../core/utils.js";
 import { showToast } from "../../shared/toast.js";
-import { getCurrentOrganizationBranding, readLogoFileAsDataUrl, saveCurrentOrganizationBranding } from "./settings-service.js";
+import {
+    forceLogoutSession,
+    getActiveLoginSessions,
+    getSessionTimeoutMinutes,
+    saveSessionTimeoutMinutes
+} from "./settings-service.js";
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -11,178 +17,214 @@ function escapeHtml(value) {
         .replace(/'/g, "&#039;");
 }
 
-function renderThemeOptions(activeTheme = "green") {
-    return BRANDING_THEMES.map((theme) => `
-        <label class="theme-choice ${theme.key === activeTheme ? "is-selected" : ""}" style="--choice-color: ${theme.accent}; --choice-color-deep: ${theme.accentDeep};">
-            <input type="radio" name="themeColor" value="${theme.key}" ${theme.key === activeTheme ? "checked" : ""}>
-            <span class="theme-choice__swatch" aria-hidden="true"></span>
-            <span>${escapeHtml(theme.label)}</span>
-        </label>
-    `).join("");
-}
-
-function renderBrandingSection(session, branding) {
-    if (!session?.businessId) {
-        return "";
+function formatDateTime(value) {
+    if (!value) {
+        return "-";
     }
 
-    const logoUrl = branding?.logoUrl || "";
-    const activeTheme = branding?.themeColor || "green";
-    return `
-        <section class="panel branding-settings-panel">
-            <div class="panel-head">
-                <div>
-                    <p class="eyebrow">Organization branding</p>
-                    <h3>Theme & Logo</h3>
-                </div>
-                <span class="badge paid">Organization-wide</span>
-            </div>
-            <form class="branding-settings-form" data-branding-settings-form>
-                <div class="branding-preview">
-                    <div class="branding-preview__logo" data-branding-logo-preview>
-                        ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span>${escapeHtml((session.businessName || "Tia").slice(0, 1).toUpperCase())}</span>`}
-                    </div>
-                    <div>
-                        <p class="sidebar-card-label">Current Brand</p>
-                        <h4>${escapeHtml(session.businessName || "Organization")}</h4>
-                        <p class="muted">This logo and theme will appear across dashboards, reports, invoices, receipts, and printable documents.</p>
-                    </div>
-                </div>
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return "-";
+    }
 
-                <label class="form-field">
-                    <span>Company Logo</span>
-                    <input type="file" accept="image/*" data-branding-logo-input>
-                    <small>Use PNG, JPG, or SVG. Maximum 300KB.</small>
-                </label>
-
-                <input type="hidden" name="logoUrl" value="${escapeHtml(logoUrl)}" data-branding-logo-url>
-
-                <div class="form-field">
-                    <span>Color Theme</span>
-                    <div class="theme-choice-grid" data-theme-choice-grid>
-                        ${renderThemeOptions(activeTheme)}
-                    </div>
-                </div>
-
-                <div class="button-row">
-                    <button class="btn btn-secondary" type="button" data-branding-remove-logo ${logoUrl ? "" : "disabled"}>Remove Logo</button>
-                    <button class="btn btn-primary" type="submit" data-branding-save>
-                        <span class="btn-label">Save Branding</span>
-                        <span class="spinner" aria-hidden="true"></span>
-                    </button>
-                </div>
-                <p class="muted" data-branding-status></p>
-            </form>
-        </section>
-    `;
+    return new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    }).format(date);
 }
 
-export async function renderSettings(session) {
-    const brandingResult = await getCurrentOrganizationBranding();
-    const branding = brandingResult.branding;
+function setSubmittingState(button, isSubmitting) {
+    if (!button) {
+        return;
+    }
+
+    button.disabled = isSubmitting;
+    button.classList.toggle("is-loading", isSubmitting);
+    button.setAttribute("aria-busy", String(isSubmitting));
+}
+
+function renderManagedSettings() {
     return `
         <div class="section-stack">
-            ${renderBrandingSection(session, branding)}
+            <section class="panel">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">Settings</p>
+                        <h3>Managed by Super Admin</h3>
+                    </div>
+                </div>
+                <p class="muted">Organization theme, color, logo, branch logo, and security session controls are configured from the Super Admin workspace.</p>
+            </section>
         </div>
     `;
 }
 
-export function bindSettingsActions(container, refresh) {
-    const form = container.querySelector("[data-branding-settings-form]");
-    if (!form) {
-        return;
+function renderActiveSessions(sessions = []) {
+    const rows = sessions.length
+        ? sessions.map((session) => `
+            <tr>
+                <td>
+                    <strong>${escapeHtml(session.userName || "User")}</strong>
+                    <span class="muted table-subtext">${escapeHtml(session.email || session.userId || "")}</span>
+                </td>
+                <td>${escapeHtml(formatRole(session.role) || "-")}</td>
+                <td>${formatDateTime(session.signedInAt)}</td>
+                <td>${session.loginAttemptCount || 0}</td>
+                <td>${formatDateTime(session.lastLoginAttemptAt)}</td>
+                <td>
+                    <button class="btn btn-secondary" type="button" data-force-logout-session-id="${escapeHtml(session.id)}">
+                        <span class="btn-label">Log Out</span>
+                        <span class="spinner" aria-hidden="true"></span>
+                    </button>
+                </td>
+            </tr>
+        `).join("")
+        : `<tr><td colspan="6">No active user sessions found.</td></tr>`;
+
+    return `
+        <section class="panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">Active sessions</p>
+                    <h3>Logged-in users</h3>
+                </div>
+                <button class="btn btn-secondary" type="button" data-refresh-sessions>Refresh</button>
+            </div>
+            <div class="table-wrap mt-18">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Signed In</th>
+                            <th>Blocked Attempts</th>
+                            <th>Last Attempt</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody data-active-sessions-body>${rows}</tbody>
+                </table>
+            </div>
+            <p class="muted mt-12" data-session-action-status>Force logout ends the active dashboard session. The user will be redirected to login on their next session check.</p>
+        </section>
+    `;
+}
+
+function renderSuperAdminSettings(timeoutMinutes, sessions) {
+    return `
+        <div class="section-stack">
+            <section class="panel">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">Security settings</p>
+                        <h3>Session timeout</h3>
+                    </div>
+                </div>
+                <form class="form-grid mt-18" data-session-timeout-form>
+                    <label class="form-field">
+                        <span>Idle Timeout Minutes</span>
+                        <input name="session_timeout_minutes" type="number" min="5" max="720" step="1" value="${escapeHtml(timeoutMinutes)}" required>
+                        <small>Users are signed out after this many idle minutes. Use 5 to 720 minutes.</small>
+                    </label>
+                    <div class="button-row">
+                        <button class="btn btn-primary" type="submit" data-session-timeout-save>
+                            <span class="btn-label">Save Timeout</span>
+                            <span class="spinner" aria-hidden="true"></span>
+                        </button>
+                        <p class="muted" data-session-timeout-status></p>
+                    </div>
+                </form>
+            </section>
+            ${renderActiveSessions(sessions)}
+        </div>
+    `;
+}
+
+export async function renderSettings(session) {
+    if (session?.role !== ROLES.SUPER_ADMIN) {
+        return renderManagedSettings();
     }
 
-    const logoInput = form.querySelector("[data-branding-logo-input]");
-    const logoUrlInput = form.querySelector("[data-branding-logo-url]");
-    const logoPreview = form.querySelector("[data-branding-logo-preview]");
-    const removeLogoButton = form.querySelector("[data-branding-remove-logo]");
-    const status = form.querySelector("[data-branding-status]");
-    const saveButton = form.querySelector("[data-branding-save]");
+    const [timeoutMinutes, sessions] = await Promise.all([
+        getSessionTimeoutMinutes(),
+        getActiveLoginSessions()
+    ]);
 
-    const setStatus = (message) => {
-        if (status) {
-            status.textContent = message || "";
-        }
-    };
+    return renderSuperAdminSettings(timeoutMinutes, sessions);
+}
 
-    const setLogoPreview = (logoUrl) => {
-        if (!logoPreview) {
-            return;
-        }
-        logoPreview.innerHTML = logoUrl
-            ? `<img src="${escapeHtml(logoUrl)}" alt="">`
-            : "<span>T</span>";
-        if (removeLogoButton) {
-            removeLogoButton.disabled = !logoUrl;
-        }
-    };
+export function bindSettingsActions(container, refresh) {
+    const timeoutForm = container.querySelector("[data-session-timeout-form]");
 
-    form.querySelectorAll('input[name="themeColor"]').forEach((input) => {
-        input.addEventListener("change", () => {
-            form.querySelectorAll(".theme-choice").forEach((choice) => {
-                choice.classList.toggle("is-selected", choice.contains(input) && input.checked);
-            });
-        });
-    });
-
-    logoInput?.addEventListener("change", async () => {
-        const file = logoInput.files?.[0];
-        if (!file) {
-            return;
-        }
-
-        try {
-            const dataUrl = await readLogoFileAsDataUrl(file);
-            logoUrlInput.value = dataUrl;
-            setLogoPreview(dataUrl);
-            setStatus("Logo ready to save.");
-        } catch (error) {
-            logoInput.value = "";
-            setStatus(error?.message || "Unable to load logo.");
-        }
-    });
-
-    removeLogoButton?.addEventListener("click", () => {
-        logoUrlInput.value = "";
-        if (logoInput) {
-            logoInput.value = "";
-        }
-        setLogoPreview("");
-        setStatus("Logo will be removed when you save.");
-    });
-
-    form.addEventListener("submit", async (event) => {
+    timeoutForm?.addEventListener("submit", async (event) => {
         event.preventDefault();
-        const selectedTheme = form.querySelector('input[name="themeColor"]:checked')?.value || "green";
-        saveButton?.classList.add("is-loading");
-        if (saveButton) {
-            saveButton.disabled = true;
-            saveButton.setAttribute("aria-busy", "true");
+        const saveButton = timeoutForm.querySelector("[data-session-timeout-save]");
+        const status = timeoutForm.querySelector("[data-session-timeout-status]");
+        const data = new FormData(timeoutForm);
+
+        setSubmittingState(saveButton, true);
+        if (status) {
+            status.textContent = "Saving timeout...";
         }
-        setStatus("Saving branding...");
 
         try {
-            await saveCurrentOrganizationBranding({
-                themeColor: selectedTheme,
-                logoUrl: logoUrlInput?.value || ""
-            });
-            const { session } = await getCurrentOrganizationBranding({ refresh: true });
-            await applyOrganizationBranding(session, { refresh: true });
-            showToast("Branding saved.");
-            setStatus("Branding saved.");
+            await saveSessionTimeoutMinutes(Number(data.get("session_timeout_minutes") || 0));
+            showToast("Session timeout saved.");
+            if (status) {
+                status.textContent = "Session timeout saved.";
+            }
             if (typeof refresh === "function") {
                 await refresh();
             }
         } catch (error) {
-            showToast(error?.message || "Unable to save branding.", { tone: "error" });
-            setStatus(error?.message || "Unable to save branding.");
-        } finally {
-            saveButton?.classList.remove("is-loading");
-            if (saveButton) {
-                saveButton.disabled = false;
-                saveButton.setAttribute("aria-busy", "false");
+            showToast(error?.message || "Unable to save session timeout.", { tone: "error" });
+            if (status) {
+                status.textContent = error?.message || "Unable to save session timeout.";
             }
+        } finally {
+            setSubmittingState(saveButton, false);
+        }
+    });
+
+    container.addEventListener("click", async (event) => {
+        const refreshButton = event.target.closest("[data-refresh-sessions]");
+        if (refreshButton) {
+            if (typeof refresh === "function") {
+                await refresh();
+            }
+            return;
+        }
+
+        const logoutButton = event.target.closest("[data-force-logout-session-id]");
+        if (!logoutButton) {
+            return;
+        }
+
+        const sessionId = logoutButton.getAttribute("data-force-logout-session-id");
+        const status = container.querySelector("[data-session-action-status]");
+        setSubmittingState(logoutButton, true);
+        if (status) {
+            status.textContent = "Logging out user...";
+        }
+
+        try {
+            await forceLogoutSession(sessionId);
+            showToast("User logged out.");
+            if (status) {
+                status.textContent = "User logged out.";
+            }
+            if (typeof refresh === "function") {
+                await refresh();
+            }
+        } catch (error) {
+            showToast(error?.message || "Unable to log out user.", { tone: "error" });
+            if (status) {
+                status.textContent = error?.message || "Unable to log out user.";
+            }
+            setSubmittingState(logoutButton, false);
         }
     });
 }

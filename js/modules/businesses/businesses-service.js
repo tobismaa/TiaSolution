@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "../../core/supabase-client.js";
+import { getOrganizationBranding, saveOrganizationBranding } from "../../core/branding.js";
 import { DASHBOARD_FEATURE_GROUPS, FEATURE_DEFINITIONS, LEGACY_FEATURE_KEYS, normalizeFeatureKeys } from "../../core/features.js";
 
 function slugify(value) {
@@ -331,6 +332,7 @@ function mapBranchRow(branch) {
         businessId: branch.business_id,
         name: branch.name || "",
         code: branch.code || "",
+        logoUrl: branch.logo_url || "",
         isHeadOffice: Boolean(branch.is_head_office),
         isActive: branch.is_active === undefined ? true : Boolean(branch.is_active),
         createdAt: branch.created_at || null
@@ -471,7 +473,8 @@ export async function getBusinessById(businessId) {
 
     return {
         ...mapBusinessRow(business, subscriptions[0]),
-        featureKeys
+        featureKeys,
+        branding: await getOrganizationBranding(business.id, { refresh: true })
     };
 }
 
@@ -606,6 +609,10 @@ export async function onboardBusinessClient(payload) {
     }
 
     await saveBusinessFeatureKeys(supabase, business.id, payload.featureKeys || []);
+    await saveOrganizationBranding(business.id, {
+        themeColor: payload.theme_color || payload.themeColor || "green",
+        logoUrl: payload.logo_url || payload.logoUrl || ""
+    });
 
     return { business };
 }
@@ -743,6 +750,13 @@ export async function updateBusinessDetails(businessId, payload) {
         await saveBusinessFeatureKeys(supabase, businessId, payload.featureKeys);
     }
 
+    if (Object.prototype.hasOwnProperty.call(payload, "theme_color") || Object.prototype.hasOwnProperty.call(payload, "logo_url")) {
+        await saveOrganizationBranding(businessId, {
+            themeColor: payload.theme_color || payload.themeColor || "green",
+            logoUrl: payload.logo_url || payload.logoUrl || ""
+        });
+    }
+
     return true;
 }
 
@@ -754,17 +768,17 @@ export async function getBusinessBranches(businessId) {
 
     let { data, error } = await supabase
         .from("branches")
-        .select("id, business_id, name, code, is_head_office, is_active, created_at")
+        .select("id, business_id, name, code, logo_url, is_head_office, is_active, created_at")
         .eq("business_id", businessId)
         .order("created_at", { ascending: false });
 
-    if (error && isMissingColumnError(error, "is_active")) {
+    if (error && (isMissingColumnError(error, "is_active") || isMissingColumnError(error, "logo_url"))) {
         const fallback = await supabase
             .from("branches")
             .select("id, business_id, name, code, is_head_office, created_at")
             .eq("business_id", businessId)
             .order("created_at", { ascending: false });
-        data = (fallback.data || []).map((item) => ({ ...item, is_active: true }));
+        data = (fallback.data || []).map((item) => ({ ...item, is_active: true, logo_url: "" }));
         error = fallback.error;
     }
 
@@ -773,6 +787,29 @@ export async function getBusinessBranches(businessId) {
     }
 
     return (data || []).map(mapBranchRow);
+}
+
+export async function updateBusinessBranchLogo(businessId, branchId, logoUrl) {
+    const supabase = getSupabaseClient();
+    if (!supabase || !businessId || !branchId) {
+        throw new Error("Branch context is unavailable.");
+    }
+
+    const { error } = await supabase
+        .from("branches")
+        .update({ logo_url: String(logoUrl || "").trim() || null })
+        .eq("business_id", businessId)
+        .eq("id", branchId);
+
+    if (error && isMissingColumnError(error, "logo_url")) {
+        throw new Error("Branch logo column is missing. Run sql/add-super-admin-branding-and-sessions.sql.");
+    }
+
+    if (error) {
+        throw error;
+    }
+
+    return true;
 }
 
 export async function getBusinessBranchFeatureAccess(businessId, branchId) {

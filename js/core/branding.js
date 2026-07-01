@@ -11,6 +11,7 @@ export const BRANDING_THEMES = [
 
 const DEFAULT_THEME_KEY = "green";
 let brandingCache = new Map();
+let branchLogoCache = new Map();
 
 function isMissingBrandingColumnError(error) {
     const code = String(error?.code || "").toUpperCase();
@@ -72,6 +73,37 @@ export async function getOrganizationBranding(businessId, options = {}) {
     return branding;
 }
 
+async function getBranchLogoUrl(branchId, options = {}) {
+    const normalizedBranchId = String(branchId || "").trim();
+    if (!normalizedBranchId) {
+        return "";
+    }
+
+    if (!options.refresh && branchLogoCache.has(normalizedBranchId)) {
+        return branchLogoCache.get(normalizedBranchId);
+    }
+
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        return "";
+    }
+
+    const { data, error } = await supabase
+        .from("branches")
+        .select("logo_url")
+        .eq("id", normalizedBranchId)
+        .maybeSingle();
+
+    if (error) {
+        branchLogoCache.set(normalizedBranchId, "");
+        return "";
+    }
+
+    const logoUrl = String(data?.logo_url || "").trim();
+    branchLogoCache.set(normalizedBranchId, logoUrl);
+    return logoUrl;
+}
+
 export async function saveOrganizationBranding(businessId, branding) {
     const normalizedBusinessId = String(businessId || "").trim();
     if (!normalizedBusinessId) {
@@ -119,7 +151,11 @@ export function getAppliedBranding() {
 }
 
 export async function applyOrganizationBranding(session, options = {}) {
-    const branding = await getOrganizationBranding(session?.businessId, options);
+    const organizationBranding = await getOrganizationBranding(session?.businessId, options);
+    const branchLogoUrl = await getBranchLogoUrl(session?.branchId, options);
+    const branding = branchLogoUrl
+        ? { ...organizationBranding, logoUrl: branchLogoUrl }
+        : organizationBranding;
     const root = document.documentElement;
     const { theme, logoUrl } = branding;
 
@@ -150,4 +186,5 @@ export function clearBrandingCache(businessId = "") {
         return;
     }
     brandingCache = new Map();
+    branchLogoCache = new Map();
 }

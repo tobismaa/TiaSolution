@@ -7,6 +7,7 @@ alter table public.demo_access_links enable row level security;
 alter table public.branches enable row level security;
 alter table public.business_members enable row level security;
 alter table public.business_settings enable row level security;
+alter table public.platform_settings enable row level security;
 alter table public.business_features enable row level security;
 alter table public.branch_features enable row level security;
 alter table public.tax_rates enable row level security;
@@ -79,6 +80,7 @@ drop policy if exists "platform admins can manage businesses" on public.business
 drop policy if exists "members can view their memberships" on public.business_members;
 drop policy if exists "admins can manage memberships" on public.business_members;
 drop policy if exists "business scoped settings" on public.business_settings;
+drop policy if exists "platform admins manage platform settings" on public.platform_settings;
 drop policy if exists "platform admins manage business features" on public.business_features;
 drop policy if exists "business members view business features" on public.business_features;
 drop policy if exists "platform admins manage branch features" on public.branch_features;
@@ -262,8 +264,13 @@ with check (business_id in (select public.current_business_ids()) or public.is_p
 
 create policy "business scoped settings"
 on public.business_settings for all
-using (business_id in (select public.current_business_ids()))
-with check (business_id in (select public.current_business_ids()));
+using (business_id in (select public.current_business_ids()) or public.is_platform_admin())
+with check (business_id in (select public.current_business_ids()) or public.is_platform_admin());
+
+create policy "platform admins manage platform settings"
+on public.platform_settings for all
+using (public.is_platform_admin())
+with check (public.is_platform_admin());
 
 drop policy if exists "platform admins manage business features" on public.business_features;
 create policy "platform admins manage business features"
