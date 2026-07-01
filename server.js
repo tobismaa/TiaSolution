@@ -12,10 +12,11 @@ const rootDir = resolve(__dirname);
 const port = Number(process.env.PORT || 8003);
 const supabaseUrl = process.env.SUPABASE_URL || "https://clfwijtkiblpmgentbho.supabase.co";
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "sb_publishable_zMwE89HnJVeb6tUI3QXlhQ_GB2iZrUN";
+const supabaseServerKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
 const resendApiKey = process.env.RESEND_API_KEY || "";
 const resendFromEmail = process.env.RESEND_FROM_EMAIL || "Tia Security <onboarding@resend.dev>";
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
-const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey, {
+const supabaseAdmin = createClient(supabaseUrl, supabaseServerKey, {
     auth: {
         autoRefreshToken: false,
         persistSession: false
@@ -66,7 +67,9 @@ function handleHealthCheck(response) {
             }
         })(),
         supabaseKeyPrefix: supabaseAnonKey ? supabaseAnonKey.slice(0, 13) : null,
-        supabaseKeyLength: supabaseAnonKey.length
+        supabaseKeyLength: supabaseAnonKey.length,
+        supabaseServerKeyConfigured: supabaseServerKey !== supabaseAnonKey,
+        supabaseServerKeyPrefix: supabaseServerKey ? supabaseServerKey.slice(0, 10) : null
     });
 }
 

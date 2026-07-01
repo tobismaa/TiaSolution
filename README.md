@@ -42,6 +42,7 @@ before sending an email to the authenticated user's email address.
 2. Create `.env` from `.env.example` and set:
 
    ```bash
+   SUPABASE_SECRET_KEY=sb_secret_your_supabase_server_key
    RESEND_API_KEY=re_your_resend_api_key
    RESEND_FROM_EMAIL=Tia Security <security@your-domain.com>
    ```
