@@ -24,11 +24,6 @@ with check (
         where actor.user_id = auth.uid()
           and actor.is_active = true
           and actor.role = 'business_admin'
-          and actor.business_id in (
-              select bm.business_id
-              from public.business_members bm
-              where bm.user_id = profiles.id
-          )
     )
 );
 

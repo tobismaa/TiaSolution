@@ -613,9 +613,14 @@ end;
 $$;
 
 drop policy if exists "users can view their profile" on public.profiles;
+drop policy if exists "users can insert their profile" on public.profiles;
 create policy "users can view their profile"
 on public.profiles for select
 using (id = auth.uid());
+
+create policy "users can insert their profile"
+on public.profiles for insert
+with check (id = auth.uid());
 
 drop policy if exists "users can update their profile" on public.profiles;
 create policy "users can update their profile"
@@ -654,11 +659,6 @@ with check (
         where actor.user_id = auth.uid()
           and actor.is_active = true
           and actor.role = 'business_admin'
-          and actor.business_id in (
-              select bm.business_id
-              from public.business_members bm
-              where bm.user_id = profiles.id
-          )
     )
 );
 
