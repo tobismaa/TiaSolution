@@ -38,7 +38,7 @@ function sendJson(response, statusCode, payload) {
         "content-type": "application/json; charset=utf-8",
         "access-control-allow-origin": "*",
         "access-control-allow-methods": "POST, OPTIONS",
-        "access-control-allow-headers": "authorization, content-type"
+        "access-control-allow-headers": "authorization, content-type, x-tia-auth"
     });
     response.end(JSON.stringify(payload));
 }
@@ -75,7 +75,14 @@ async function readRequestJson(request) {
 function getBearerToken(request) {
     const header = request.headers.authorization || "";
     const match = /^Bearer\s+(.+)$/i.exec(header);
-    return match?.[1] || "";
+    if (match?.[1]) {
+        return match[1];
+    }
+
+    const backupHeader = request.headers["x-tia-auth"] || "";
+    const backupValue = Array.isArray(backupHeader) ? backupHeader[0] : backupHeader;
+    const backupMatch = /^Bearer\s+(.+)$/i.exec(backupValue);
+    return backupMatch?.[1] || backupValue || "";
 }
 
 async function getAuthenticatedUser(token) {
@@ -143,10 +150,17 @@ async function handleSecurityNotification(request, response) {
         return;
     }
 
-    const user = await getAuthenticatedUser(getBearerToken(request));
+    const authToken = getBearerToken(request);
+    if (!authToken) {
+        console.warn("[security-notification] Missing Supabase bearer token.");
+        sendJson(response, 401, { error: "Authentication is required.", reason: "missing_token" });
+        return;
+    }
+
+    const user = await getAuthenticatedUser(authToken);
     if (!user?.id || !user?.email) {
         console.warn("[security-notification] Rejected unauthenticated request.");
-        sendJson(response, 401, { error: "Authentication is required." });
+        sendJson(response, 401, { error: "Authentication is required.", reason: "token_rejected" });
         return;
     }
 

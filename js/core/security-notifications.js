@@ -37,7 +37,8 @@ export async function sendSecurityNotification(payload) {
                 method: "POST",
                 headers: {
                     "authorization": `Bearer ${token}`,
-                    "content-type": "application/json"
+                    "content-type": "application/json",
+                    "x-tia-auth": token
                 },
                 body: JSON.stringify(payload)
             });
