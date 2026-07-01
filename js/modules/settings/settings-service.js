@@ -36,7 +36,8 @@ export function readLogoFileAsDataUrl(file) {
         }
 
         if (file.size > MAX_LOGO_BYTES) {
-            reject(new Error("Logo must be 300KB or smaller."));
+            const selectedKb = Math.ceil(file.size / 1024);
+            reject(new Error(`Logo is too large (${selectedKb}KB). Maximum allowed is 300KB.`));
             return;
         }
 

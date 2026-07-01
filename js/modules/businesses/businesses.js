@@ -468,18 +468,6 @@ function renderBranchManagementSection(businessId, branches) {
             <tr>
                 <td>${escapeHtml(branch.name || "-")}</td>
                 <td>${escapeHtml(branch.code || "-")}</td>
-                <td>
-                    <div class="branch-logo-cell" data-branch-logo-row>
-                        <div class="branding-preview__logo branch-logo-preview" data-branch-logo-preview>
-                            ${branch.logoUrl ? `<img src="${escapeHtml(branch.logoUrl)}" alt="">` : `<span>${escapeHtml(String(branch.name || "B").slice(0, 1).toUpperCase())}</span>`}
-                        </div>
-                        <input type="hidden" value="${escapeHtml(branch.logoUrl || "")}" data-branch-logo-url>
-                        <input class="branch-logo-input" type="file" accept="image/*" data-branch-logo-input aria-label="Upload branch logo">
-                        <button class="btn btn-secondary" type="button" data-branch-logo-save-business-id="${businessId}" data-branch-logo-save-id="${branch.id}">
-                            Save Logo
-                        </button>
-                    </div>
-                </td>
                 <td>${branch.isHeadOffice ? "Head Office" : "Branch"}</td>
                 <td><span class="badge ${formatStatusTone(branch.isActive ? "active" : "deactivated")}">${branch.isActive ? "Active" : "Deactivated"}</span></td>
                 <td>
@@ -497,7 +485,7 @@ function renderBranchManagementSection(businessId, branches) {
                 </td>
             </tr>
         `).join("")
-        : `<tr><td colspan="6">No branches available for this organization.</td></tr>`;
+        : `<tr><td colspan="5">No branches available for this organization.</td></tr>`;
 
     return `
         <section class="panel mt-18">
@@ -513,7 +501,6 @@ function renderBranchManagementSection(businessId, branches) {
                         <tr>
                             <th>Name</th>
                             <th>Code</th>
-                            <th>Logo</th>
                             <th>Type</th>
                             <th>Status</th>
                             <th>Action</th>
@@ -529,6 +516,7 @@ function renderBranchManagementSection(businessId, branches) {
 
 function renderBranchAccessModalContent(branchName, businessId, branchId, access) {
     const hasOverrides = Boolean(access?.hasOverrides);
+    const logoUrl = access?.logoUrl || "";
     return `
         <form class="form-grid branch-access-form" data-branch-access-form>
             <input type="hidden" name="business_id" value="${businessId}">
@@ -542,6 +530,35 @@ function renderBranchAccessModalContent(branchName, businessId, branchId, access
                         : "This branch currently follows the organization access. Save here to set branch-specific access."}
                 </p>
             </div>
+            <section class="business-branding-box branch-access-logo-box">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">Branch logo</p>
+                        <h3>Dashboard & Document Logo</h3>
+                    </div>
+                    <span class="badge paid">Branch-specific</span>
+                </div>
+                <div class="branding-preview">
+                    <div class="branding-preview__logo" data-branch-logo-preview>
+                        ${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span>${escapeHtml(String(branchName || "B").slice(0, 1).toUpperCase())}</span>`}
+                    </div>
+                    <div>
+                        <p class="sidebar-card-label">Current Branch</p>
+                        <h4>${escapeHtml(branchName || "Branch")}</h4>
+                        <p class="muted">This logo is used for users and documents scoped to this branch.</p>
+                    </div>
+                </div>
+                <label class="form-field">
+                    <span>Branch Logo</span>
+                    <input type="file" accept="image/*" data-branch-logo-input>
+                    <small>Use PNG, JPG, or SVG. Maximum 300KB.</small>
+                </label>
+                <input type="hidden" name="logo_url" value="${escapeHtml(logoUrl)}" data-branch-logo-url>
+                <div class="button-row">
+                    <button class="btn btn-secondary" type="button" data-branch-remove-logo ${logoUrl ? "" : "disabled"}>Remove Logo</button>
+                    <p class="muted" data-branch-logo-status></p>
+                </div>
+            </section>
             ${renderFeaturePicker(access?.featureKeys || [], {
                 eyebrow: "Branch Dashboard Access",
                 title: "Branch dashboard functions",
@@ -856,11 +873,20 @@ export async function renderBusinesses() {
             const setBranchLogoPreview = (row, logoUrl) => {
                 const preview = row?.querySelector("[data-branch-logo-preview]");
                 const hiddenInput = row?.querySelector("[data-branch-logo-url]");
+                const removeButton = row?.querySelector("[data-branch-remove-logo]");
+                const statusNode = row?.querySelector("[data-branch-logo-status]");
                 if (hiddenInput) {
                     hiddenInput.value = logoUrl || "";
                 }
                 if (preview) {
-                    preview.innerHTML = logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : "<span>B</span>";
+                    const fallback = String(row?.querySelector("h4")?.textContent || "B").slice(0, 1).toUpperCase();
+                    preview.innerHTML = logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="">` : `<span>${escapeHtml(fallback || "B")}</span>`;
+                }
+                if (removeButton) {
+                    removeButton.disabled = !logoUrl;
+                }
+                if (statusNode) {
+                    statusNode.textContent = logoUrl ? "Logo ready to save." : "Logo will be removed when you save.";
                 }
             };
 
@@ -965,7 +991,7 @@ export async function renderBusinesses() {
 
                 const branchLogoInput = event.target.closest?.("[data-branch-logo-input]");
                 if (branchLogoInput) {
-                    const row = branchLogoInput.closest("[data-branch-logo-row]");
+                    const row = branchLogoInput.closest(".branch-access-logo-box");
                     const file = branchLogoInput.files?.[0];
                     if (!file) {
                         return;
@@ -975,7 +1001,7 @@ export async function renderBusinesses() {
                         setBranchLogoPreview(row, dataUrl);
                     } catch (error) {
                         branchLogoInput.value = "";
-                        const statusNode = detailsBody?.querySelector("[data-branch-action-status]");
+                        const statusNode = row?.querySelector("[data-branch-logo-status]") || branchLogoInput.closest("form")?.querySelector(".branch-access-save-status");
                         if (statusNode) {
                             statusNode.textContent = error?.message || "Unable to load branch logo.";
                         }
@@ -1007,38 +1033,14 @@ export async function renderBusinesses() {
                     return;
                 }
 
-                const branchLogoSaveButton = event.target.closest("[data-branch-logo-save-id][data-branch-logo-save-business-id]");
-                if (branchLogoSaveButton) {
-                    const businessId = branchLogoSaveButton.getAttribute("data-branch-logo-save-business-id");
-                    const branchId = branchLogoSaveButton.getAttribute("data-branch-logo-save-id");
-                    const row = branchLogoSaveButton.closest("[data-branch-logo-row]");
-                    const logoUrl = row?.querySelector("[data-branch-logo-url]")?.value || "";
-                    const statusNode = detailsBody?.querySelector("[data-branch-action-status]");
-                    if (!businessId || !branchId) {
-                        return;
+                const branchRemoveLogoButton = event.target.closest("[data-branch-remove-logo]");
+                if (branchRemoveLogoButton) {
+                    const logoBox = branchRemoveLogoButton.closest(".branch-access-logo-box");
+                    const logoInput = logoBox?.querySelector("[data-branch-logo-input]");
+                    if (logoInput) {
+                        logoInput.value = "";
                     }
-
-                    const originalText = branchLogoSaveButton.textContent;
-                    branchLogoSaveButton.disabled = true;
-                    branchLogoSaveButton.textContent = "Saving...";
-                    showPageLoading();
-
-                    try {
-                        await updateBusinessBranchLogo(businessId, branchId, logoUrl);
-                        if (statusNode) {
-                            statusNode.textContent = "Branch logo saved.";
-                        }
-                        await loadBusinessDetailsPanel(businessId);
-                    } catch (error) {
-                        if (statusNode) {
-                            statusNode.textContent = error?.message || "Unable to save branch logo.";
-                        }
-                        branchLogoSaveButton.textContent = originalText;
-                        branchLogoSaveButton.disabled = false;
-                    } finally {
-                        hidePageLoading();
-                    }
-
+                    setBranchLogoPreview(logoBox, "");
                     return;
                 }
 
@@ -1225,6 +1227,7 @@ export async function renderBusinesses() {
                     const data = new FormData(branchAccessForm);
                     const businessId = String(data.get("business_id") || "").trim();
                     const branchId = String(data.get("branch_id") || "").trim();
+                    const logoUrl = String(data.get("logo_url") || "").trim();
                     const branchName = branchAccessForm.querySelector("h3")?.textContent || "Branch";
                     if (!businessId || !branchId || !saveButton) {
                         return;
@@ -1238,6 +1241,7 @@ export async function renderBusinesses() {
 
                     try {
                         await updateBusinessBranchFeatureAccess(businessId, branchId, getSelectedFeatureKeys(branchAccessForm));
+                        await updateBusinessBranchLogo(businessId, branchId, logoUrl);
                         await loadBranchAccessPanel(businessId, branchId, branchName);
                         const refreshedForm = branchAccessBody?.querySelector("[data-branch-access-form]");
                         if (activeDashboardKey && refreshedForm) {
@@ -1245,7 +1249,7 @@ export async function renderBusinesses() {
                         }
                         const refreshedSaveStatus = branchAccessBody?.querySelector(".branch-access-save-status");
                         if (refreshedSaveStatus) {
-                            refreshedSaveStatus.textContent = "Branch access saved.";
+                            refreshedSaveStatus.textContent = "Branch access and logo saved.";
                         }
                     } catch (error) {
                         if (saveStatus) {

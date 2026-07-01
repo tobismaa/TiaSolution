@@ -184,6 +184,25 @@ async function getBranchFeatureRows(supabase, businessId, branchId) {
     return sortFeatureRows(data || []);
 }
 
+async function getBranchLogoUrl(supabase, businessId, branchId) {
+    const { data, error } = await supabase
+        .from("branches")
+        .select("logo_url")
+        .eq("business_id", businessId)
+        .eq("id", branchId)
+        .maybeSingle();
+
+    if (error && isMissingColumnError(error, "logo_url")) {
+        return "";
+    }
+
+    if (error) {
+        throw error;
+    }
+
+    return String(data?.logo_url || "").trim();
+}
+
 async function saveBranchFeatureKeys(supabase, businessId, branchId, featureKeys) {
     const enabled = new Set(normalizeFeatureKeys(featureKeys));
     const orderMap = buildFeatureOrderMap(featureKeys);
@@ -818,15 +837,17 @@ export async function getBusinessBranchFeatureAccess(businessId, branchId) {
         return { featureKeys: [], organizationFeatureKeys: [], hasOverrides: false };
     }
 
-    const [businessFeatureKeys, branchRows] = await Promise.all([
+    const [businessFeatureKeys, branchRows, logoUrl] = await Promise.all([
         getBusinessFeatureKeysFromDb(supabase, businessId),
-        getBranchFeatureRows(supabase, businessId, branchId)
+        getBranchFeatureRows(supabase, businessId, branchId),
+        getBranchLogoUrl(supabase, businessId, branchId)
     ]);
 
     if (!branchRows.length) {
         return {
             featureKeys: businessFeatureKeys,
             organizationFeatureKeys: businessFeatureKeys,
+            logoUrl,
             hasOverrides: false
         };
     }
@@ -842,6 +863,7 @@ export async function getBusinessBranchFeatureAccess(businessId, branchId) {
             .map((item) => item.feature_key))
             .filter((featureKey) => branchFeatureKeys.has(featureKey) && businessFeatureKeySet.has(featureKey)),
         organizationFeatureKeys: businessFeatureKeys,
+        logoUrl,
         hasOverrides: true
     };
 }
