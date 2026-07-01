@@ -68,7 +68,7 @@ function renderActiveSessions(sessions = []) {
             <tr>
                 <td>
                     <strong>${escapeHtml(session.userName || "User")}</strong>
-                    <span class="muted table-subtext">${escapeHtml(session.email || session.userId || "")}</span>
+                    <span class="muted table-subtext">${escapeHtml(session.email || "No email on profile")}</span>
                 </td>
                 <td>${escapeHtml(formatRole(session.role) || "-")}</td>
                 <td>${formatDateTime(session.signedInAt)}</td>
@@ -116,29 +116,37 @@ function renderActiveSessions(sessions = []) {
 function renderSuperAdminSettings(timeoutMinutes, sessions) {
     return `
         <div class="section-stack">
-            <section class="panel">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">Security settings</p>
-                        <h3>Session timeout</h3>
+            <div class="button-row demo-tabbar settings-subtabs" role="tablist" aria-label="Super admin settings">
+                <button class="btn btn-primary" type="button" role="tab" aria-selected="true" data-settings-tab="security">Security Settings</button>
+                <button class="btn btn-secondary" type="button" role="tab" aria-selected="false" data-settings-tab="sessions">Active Session</button>
+            </div>
+            <div data-settings-panel="security">
+                <section class="panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="eyebrow">Security settings</p>
+                            <h3>Session timeout</h3>
+                        </div>
                     </div>
-                </div>
-                <form class="form-grid mt-18" data-session-timeout-form>
-                    <label class="form-field">
-                        <span>Idle Timeout Minutes</span>
-                        <input name="session_timeout_minutes" type="number" min="5" max="720" step="1" value="${escapeHtml(timeoutMinutes)}" required>
-                        <small>Users are signed out after this many idle minutes. Use 5 to 720 minutes.</small>
-                    </label>
-                    <div class="button-row">
-                        <button class="btn btn-primary" type="submit" data-session-timeout-save>
-                            <span class="btn-label">Save Timeout</span>
-                            <span class="spinner" aria-hidden="true"></span>
-                        </button>
-                        <p class="muted" data-session-timeout-status></p>
-                    </div>
-                </form>
-            </section>
-            ${renderActiveSessions(sessions)}
+                    <form class="form-grid mt-18" data-session-timeout-form>
+                        <label class="form-field">
+                            <span>Idle Timeout Minutes</span>
+                            <input name="session_timeout_minutes" type="number" min="5" max="720" step="1" value="${escapeHtml(timeoutMinutes)}" required>
+                            <small>Users are signed out after this many idle minutes. Use 5 to 720 minutes.</small>
+                        </label>
+                        <div class="button-row">
+                            <button class="btn btn-primary" type="submit" data-session-timeout-save>
+                                <span class="btn-label">Save Timeout</span>
+                                <span class="spinner" aria-hidden="true"></span>
+                            </button>
+                            <p class="muted" data-session-timeout-status></p>
+                        </div>
+                    </form>
+                </section>
+            </div>
+            <div data-settings-panel="sessions" hidden>
+                ${renderActiveSessions(sessions)}
+            </div>
         </div>
     `;
 }
@@ -190,6 +198,21 @@ export function bindSettingsActions(container, refresh) {
     });
 
     container.addEventListener("click", async (event) => {
+        const settingsTab = event.target.closest("[data-settings-tab]");
+        if (settingsTab) {
+            const tabKey = settingsTab.getAttribute("data-settings-tab") || "security";
+            container.querySelectorAll("[data-settings-tab]").forEach((button) => {
+                const isActive = button === settingsTab;
+                button.classList.toggle("btn-primary", isActive);
+                button.classList.toggle("btn-secondary", !isActive);
+                button.setAttribute("aria-selected", String(isActive));
+            });
+            container.querySelectorAll("[data-settings-panel]").forEach((panel) => {
+                panel.hidden = panel.getAttribute("data-settings-panel") !== tabKey;
+            });
+            return;
+        }
+
         const refreshButton = event.target.closest("[data-refresh-sessions]");
         if (refreshButton) {
             if (typeof refresh === "function") {

@@ -106,20 +106,53 @@ export async function getActiveLoginSessions() {
     if (userIds.length) {
         const profileResult = await supabase
             .from("profiles")
-            .select("id, full_name, email, role")
+            .select("id, full_name, email")
             .in("id", userIds);
         profiles = profileResult.error ? [] : (profileResult.data || []);
     }
 
+    let platformAdmins = [];
+    let businessMembers = [];
+    if (userIds.length) {
+        const [platformResult, memberResult] = await Promise.all([
+            supabase
+                .from("platform_admins")
+                .select("user_id, role, is_active")
+                .in("user_id", userIds),
+            supabase
+                .from("business_members")
+                .select("user_id, role, is_active")
+                .in("user_id", userIds)
+        ]);
+        platformAdmins = platformResult.error ? [] : (platformResult.data || []);
+        businessMembers = memberResult.error ? [] : (memberResult.data || []);
+    }
+
     const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+    const platformRoleByUserId = new Map(
+        platformAdmins
+            .filter((item) => item.is_active !== false)
+            .map((item) => [item.user_id, item.role || "super_admin"])
+    );
+    const businessRoleByUserId = new Map();
+    businessMembers.forEach((member) => {
+        const existing = businessRoleByUserId.get(member.user_id);
+        if (!existing || (existing.is_active !== true && member.is_active === true)) {
+            businessRoleByUserId.set(member.user_id, member);
+        }
+    });
+
     return rows.map((row) => {
         const profile = profileById.get(row.user_id) || {};
+        const businessMember = businessRoleByUserId.get(row.user_id);
+        const role = platformRoleByUserId.get(row.user_id) || businessMember?.role || "";
+        const displayName = String(profile.full_name || profile.email || "").trim();
         return {
             id: row.id,
             userId: row.user_id,
-            userName: profile.full_name || profile.email || "User",
+            userName: displayName || "Unknown user",
             email: profile.email || "",
-            role: profile.role || "",
+            role,
             signedInAt: row.signed_in_at || "",
             loginAttemptCount: Number(row.login_attempt_count || 0),
             lastLoginAttemptAt: row.last_login_attempt_at || ""
