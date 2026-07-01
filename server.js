@@ -5,6 +5,7 @@ import { existsSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resend } from "resend";
+import { createClient } from "@supabase/supabase-js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const rootDir = resolve(__dirname);
@@ -14,6 +15,12 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || "sb_publishable_zMwE89H
 const resendApiKey = process.env.RESEND_API_KEY || "";
 const resendFromEmail = process.env.RESEND_FROM_EMAIL || "Tia Security <onboarding@resend.dev>";
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false
+    }
+});
 const recentNotifications = new Map();
 
 const mimeTypes = {
@@ -76,18 +83,15 @@ async function getAuthenticatedUser(token) {
         return null;
     }
 
-    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-        headers: {
-            apikey: supabaseAnonKey,
-            authorization: `Bearer ${token}`
-        }
-    });
-
-    if (!response.ok) {
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data?.user) {
+        console.warn("[security-notification] Supabase token verification failed.", {
+            message: error?.message || "No user returned"
+        });
         return null;
     }
 
-    return response.json();
+    return data.user;
 }
 
 function canNotify(key) {
