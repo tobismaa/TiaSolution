@@ -97,6 +97,55 @@ function getBearerToken(request) {
     return backupMatch?.[1] || backupValue || "";
 }
 
+function decodeJwtPayload(token) {
+    try {
+        const payload = String(token || "").split(".")[1];
+        if (!payload) {
+            return null;
+        }
+
+        const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+        return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    } catch {
+        return null;
+    }
+}
+
+async function getAuthenticatedUserFromRls(token) {
+    const claims = decodeJwtPayload(token);
+    const userId = String(claims?.sub || "").trim();
+    if (!userId) {
+        return null;
+    }
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=id,email`, {
+        headers: {
+            apikey: supabaseAnonKey,
+            authorization: `Bearer ${token}`,
+            accept: "application/json"
+        }
+    });
+
+    if (!response.ok) {
+        console.warn("[security-notification] Supabase RLS token verification failed.", {
+            status: response.status
+        });
+        return null;
+    }
+
+    const rows = await response.json();
+    const profile = Array.isArray(rows) ? rows[0] : null;
+    if (!profile?.id) {
+        return null;
+    }
+
+    return {
+        id: profile.id,
+        email: profile.email || claims.email || ""
+    };
+}
+
 async function getAuthenticatedUser(token) {
     if (!token) {
         return null;
@@ -107,7 +156,7 @@ async function getAuthenticatedUser(token) {
         console.warn("[security-notification] Supabase token verification failed.", {
             message: error?.message || "No user returned"
         });
-        return null;
+        return getAuthenticatedUserFromRls(token);
     }
 
     return data.user;
