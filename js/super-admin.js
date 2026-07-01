@@ -8,7 +8,7 @@ import { renderBusinesses } from "./modules/businesses/businesses.js";
 import { renderDemoRequests, bindDemoRequestActions } from "./modules/demo-requests/demo-requests.js";
 import { renderSubscriptions } from "./modules/subscriptions/subscriptions.js";
 import { renderSettings } from "./modules/settings/settings.js";
-import { signOutUser } from "./core/auth.js";
+import { ensureLoginSessionClaimed, signOutUser, startLoginAttemptMonitor } from "./core/auth.js";
 
 function getRouteFromHash() {
     return window.location.hash.replace("#", "") || "";
@@ -162,6 +162,10 @@ export async function initSuperAdminShell() {
         return;
     }
 
+    if (!await ensureLoginSessionClaimed()) {
+        return;
+    }
+
     if (session.role !== ROLES.SUPER_ADMIN || session.mode !== "live") {
         window.location.href = "./app.html";
         return;
@@ -179,6 +183,7 @@ export async function initSuperAdminShell() {
     const sidebarInsight = document.getElementById("sidebarInsight");
     const signOutButton = document.getElementById("signOutButton");
     mountTopbarDateClock(signOutButton);
+    startLoginAttemptMonitor();
     bindModalSafetyGuards();
 
     const navItems = ROLE_NAV[ROLES.SUPER_ADMIN];

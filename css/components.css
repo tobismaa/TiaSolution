@@ -1477,6 +1477,55 @@ body .page-loading-mark {
     color: #8f5a18;
 }
 
+.tia-alert-modal {
+    z-index: 450;
+}
+
+.tia-alert-modal__dialog {
+    width: min(460px, 100%);
+    border-radius: 18px;
+    border-color: rgba(143, 90, 24, 0.24);
+    padding: 22px;
+}
+
+.tia-alert-modal__head {
+    position: static;
+    margin-bottom: 10px;
+    padding-bottom: 12px;
+}
+
+.tia-alert-modal__head h2 {
+    margin: 4px 0 0;
+    font-size: 1.2rem;
+    line-height: 1.2;
+    color: #17313e;
+}
+
+.tia-alert-modal__eyebrow {
+    margin: 0;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8f5a18;
+}
+
+.tia-alert-modal__body {
+    display: grid;
+    gap: 18px;
+}
+
+.tia-alert-modal__body p {
+    margin: 0;
+    color: #43525d;
+    line-height: 1.5;
+}
+
+.tia-alert-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
 @keyframes tia-spin {
     from {
         transform: rotate(0deg);

@@ -1,6 +1,7 @@
 alter table public.businesses enable row level security;
 alter table public.profiles enable row level security;
 alter table public.platform_admins enable row level security;
+alter table public.user_login_sessions enable row level security;
 alter table public.demo_requests enable row level security;
 alter table public.demo_access_links enable row level security;
 alter table public.branches enable row level security;
@@ -62,6 +63,8 @@ drop policy if exists "platform admins can view their platform record" on public
 drop policy if exists "platform admins can insert platform records" on public.platform_admins;
 drop policy if exists "platform admins can update platform records" on public.platform_admins;
 drop policy if exists "platform admins can delete platform records" on public.platform_admins;
+drop policy if exists "users can view their login sessions" on public.user_login_sessions;
+drop policy if exists "platform admins view login sessions" on public.user_login_sessions;
 drop policy if exists "public can submit demo requests" on public.demo_requests;
 drop policy if exists "platform admins can view demo requests" on public.demo_requests;
 drop policy if exists "platform admins can update demo requests" on public.demo_requests;
@@ -194,6 +197,14 @@ with check (public.is_platform_admin());
 
 create policy "platform admins can delete platform records"
 on public.platform_admins for delete
+using (public.is_platform_admin());
+
+create policy "users can view their login sessions"
+on public.user_login_sessions for select
+using (user_id = auth.uid());
+
+create policy "platform admins view login sessions"
+on public.user_login_sessions for select
 using (public.is_platform_admin());
 
 create policy "public can submit demo requests"

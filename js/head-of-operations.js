@@ -12,7 +12,7 @@ import { renderCustomerBilling } from "./modules/customer-billing/customer-billi
 import { renderExpenses, bindExpensesActions } from "./modules/expenses/expenses.js";
 import { renderGlPosting } from "./modules/gl-posting/gl-posting.js";
 import { renderReports } from "./modules/reports/reports.js";
-import { signOutUser } from "./core/auth.js";
+import { ensureLoginSessionClaimed, signOutUser, startLoginAttemptMonitor } from "./core/auth.js";
 
 function getRouteFromHash() {
     return window.location.hash.replace("#", "") || "";
@@ -53,6 +53,10 @@ export async function initHeadOfOperationsShell() {
         return;
     }
 
+    if (!await ensureLoginSessionClaimed()) {
+        return;
+    }
+
     if (session.role !== ROLES.MANAGER) {
         window.location.href = `./app.html${getPreservedSearch()}`;
         return;
@@ -71,6 +75,7 @@ export async function initHeadOfOperationsShell() {
     const signOutButton = document.getElementById("signOutButton");
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
+    startLoginAttemptMonitor();
 
     const navItems = getEnabledRoutesForRole(ROLES.MANAGER, session.featureKeys);
     const banner = getAccessBanner(session);

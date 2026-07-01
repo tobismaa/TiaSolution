@@ -14,7 +14,7 @@ import { renderExpenses, bindExpensesActions } from "./modules/expenses/expenses
 import { renderGlPosting } from "./modules/gl-posting/gl-posting.js";
 import { renderReports } from "./modules/reports/reports.js";
 import { renderAssets } from "./modules/assets/assets.js";
-import { signOutUser } from "./core/auth.js";
+import { ensureLoginSessionClaimed, signOutUser, startLoginAttemptMonitor } from "./core/auth.js";
 
 function getRouteFromHash() {
     return window.location.hash.replace("#", "") || "";
@@ -61,6 +61,10 @@ export async function initOperationsShell() {
         return;
     }
 
+    if (!await ensureLoginSessionClaimed()) {
+        return;
+    }
+
     if (session.role !== ROLES.STAFF) {
         window.location.href = `./app.html${getPreservedSearch()}`;
         return;
@@ -79,6 +83,7 @@ export async function initOperationsShell() {
     const signOutButton = document.getElementById("signOutButton");
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
+    startLoginAttemptMonitor();
 
     const navItems = getEnabledRoutesForRole(ROLES.STAFF, session.featureKeys);
     const banner = getAccessBanner(session);

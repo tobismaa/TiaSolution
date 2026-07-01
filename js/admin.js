@@ -17,7 +17,7 @@ import { renderPayroll } from "./modules/payroll/payroll.js";
 import { renderReports } from "./modules/reports/reports.js";
 import { renderUsers } from "./modules/users/users.js";
 import { renderSettings } from "./modules/settings/settings.js";
-import { signOutUser } from "./core/auth.js";
+import { ensureLoginSessionClaimed, signOutUser, startLoginAttemptMonitor } from "./core/auth.js";
 
 function getRouteFromHash() {
     return window.location.hash.replace("#", "") || "";
@@ -69,6 +69,10 @@ export async function initAdminShell() {
         return;
     }
 
+    if (!await ensureLoginSessionClaimed()) {
+        return;
+    }
+
     if (session.role !== ROLES.BUSINESS_ADMIN) {
         window.location.href = `./app.html${getPreservedSearch()}`;
         return;
@@ -88,6 +92,7 @@ export async function initAdminShell() {
     const signOutButton = document.getElementById("signOutButton");
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
+    startLoginAttemptMonitor();
     const scopeWidget = document.createElement("label");
     scopeWidget.className = "topbar-scope";
     scopeWidget.innerHTML = `

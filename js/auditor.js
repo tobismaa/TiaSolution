@@ -14,7 +14,7 @@ import { renderGeneralLedgers } from "./modules/general-ledgers/general-ledgers.
 import { renderAssets } from "./modules/assets/assets.js";
 import { renderPayroll } from "./modules/payroll/payroll.js";
 import { getBranchesForCurrentBusiness } from "./modules/branches/branches-service.js";
-import { signOutUser } from "./core/auth.js";
+import { ensureLoginSessionClaimed, signOutUser, startLoginAttemptMonitor } from "./core/auth.js";
 
 function getRouteFromHash() {
     return window.location.hash.replace("#", "") || "";
@@ -55,6 +55,10 @@ export async function initAuditorShell() {
         return;
     }
 
+    if (!await ensureLoginSessionClaimed()) {
+        return;
+    }
+
     if (session.role !== ROLES.AUDITOR && session.role !== ROLES.ACCOUNT) {
         window.location.href = `./app.html${getPreservedSearch()}`;
         return;
@@ -74,6 +78,7 @@ export async function initAuditorShell() {
     const signOutButton = document.getElementById("signOutButton");
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
+    startLoginAttemptMonitor();
     const scopeWidget = document.createElement("label");
     scopeWidget.className = "topbar-scope";
     scopeWidget.innerHTML = `

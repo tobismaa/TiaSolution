@@ -25,7 +25,7 @@ import { renderAuditLog } from "../modules/audit/audit-log.js";
 import { renderBusinesses } from "../modules/businesses/businesses.js";
 import { renderDemoRequests, bindDemoRequestActions } from "../modules/demo-requests/demo-requests.js";
 import { renderSubscriptions } from "../modules/subscriptions/subscriptions.js";
-import { signOutUser } from "./auth.js";
+import { ensureLoginSessionClaimed, signOutUser, startLoginAttemptMonitor } from "./auth.js";
 
 function getRouteFromHash() {
     return window.location.hash.replace("#", "") || "";
@@ -119,6 +119,10 @@ export async function initAppShell() {
         return;
     }
 
+    if (!await ensureLoginSessionClaimed()) {
+        return;
+    }
+
     if (session.role === ROLES.SUPER_ADMIN && session.mode === "live") {
         window.location.href = `./super-admin.html${getPreservedSearch()}`;
         return;
@@ -157,6 +161,7 @@ export async function initAppShell() {
     const signOutButton = document.getElementById("signOutButton");
     const loading = createPageLoadingController();
     mountTopbarDateClock(signOutButton);
+    startLoginAttemptMonitor();
     bindModalSafetyGuards();
 
     const navItems = ROLE_NAV[session.role] || ROLE_NAV[ROLES.BUSINESS_ADMIN];

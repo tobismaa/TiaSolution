@@ -27,6 +27,34 @@ Tia is now structured as a Supabase-ready multi-role ERP prototype that preserve
 - `login.html`
 - `index.html`
 
+## Resend Email Notifications
+
+Security notification emails are sent server-side through Resend. The browser calls
+`POST /api/security-notification`, and the server verifies the Supabase access token
+before sending an email to the authenticated user's email address.
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Create `.env` from `.env.example` and set:
+
+   ```bash
+   RESEND_API_KEY=re_your_resend_api_key
+   RESEND_FROM_EMAIL=Tia Security <security@your-domain.com>
+   ```
+
+3. Start the app server:
+
+   ```bash
+   npm start
+   ```
+
+By default the server runs at `http://localhost:8003/`. For production, use a
+verified Resend domain for `RESEND_FROM_EMAIL`.
+
 ## Notes
 
 - Current module services now query live Supabase tables and will show empty states until real records exist.

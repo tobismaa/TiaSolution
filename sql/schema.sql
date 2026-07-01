@@ -34,6 +34,19 @@ create table if not exists public.platform_admins (
     created_at timestamptz not null default now()
 );
 
+create table if not exists public.user_login_sessions (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references auth.users(id) on delete cascade,
+    session_key text not null unique,
+    is_active boolean not null default true,
+    signed_in_at timestamptz not null default now(),
+    signed_out_at timestamptz,
+    login_attempt_count integer not null default 0,
+    last_login_attempt_at timestamptz,
+    last_login_attempt_session_key text,
+    updated_at timestamptz not null default now()
+);
+
 create table if not exists public.demo_requests (
     id uuid primary key default gen_random_uuid(),
     business_name text not null,
